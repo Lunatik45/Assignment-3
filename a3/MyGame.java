@@ -3,13 +3,13 @@ package a3;
 import tage.VariableFrameRateGame;
 
 /**
- * Assignment 3 
+ * Assignment 3
  * <p>
- * CSC 165-02 
+ * CSC 165-02
  * <p>
  * Tested on:
  * 
- * @author Eric Rodriguez, 
+ * @author Eric Rodriguez, Roger Chavez
  */
 public class MyGame extends VariableFrameRateGame {
 
