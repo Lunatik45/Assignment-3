@@ -1,9 +1,17 @@
 package a3;
 
-import java.awt.event.KeyEvent;
+import java.io.*;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+
+import javax.script.Invocable;
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineFactory;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
+
+import net.java.games.input.Component.Identifier;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -12,17 +20,17 @@ import org.joml.Vector4f;
 import tage.Camera;
 import tage.Engine;
 import tage.GameObject;
+import tage.input.action.AbstractInputAction;
+import tage.input.IInputManager.INPUT_ACTION_TYPE;
+import tage.input.InputManager;
 import tage.Light;
+import tage.networking.IGameConnection.ProtocolType;
 import tage.ObjShape;
+import tage.shapes.ImportedModel;
+import tage.shapes.Plane;
+import tage.shapes.Sphere;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
-import tage.input.InputManager;
-import tage.input.action.AbstractInputAction;
-import tage.networking.IGameConnection.ProtocolType;
-import tage.shapes.ImportedModel;
-import tage.shapes.Line;
-import tage.shapes.Sphere;
-import tage.shapes.Torus;
 
 /**
  * Assignment 3
@@ -36,35 +44,41 @@ import tage.shapes.Torus;
 public class MyGame extends VariableFrameRateGame {
 
 	private static Engine engine;
+
+	private File scriptFile;
+	private GameObject avatar, plane;
+	private GhostManager ghostManager;
 	private InputManager im;
-	private GhostManager gm;
-
-	private int counter = 0;
-	private Vector3f currentPosition;
-	private Matrix4f initialTranslation, initialRotation, initialScale;
-	private double startTime, prevTime, elapsedTime, amt;
-
-	private GameObject tor, avatar, x, y, z;
-	private ObjShape torS, ghostS, dolS, linxS, linyS, linzS;
-	private TextureImage doltx, ghostT;
 	private Light light;
-
-	private String serverAddress;
-	private int serverPort;
+	private ObjShape ghostShape, dolphinShape, planeShape;
+	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
-	private ProtocolClient protClient;
+	private ScriptEngine jsEngine;
+	private String serverAddress;
+	private TextureImage dolphinTex, ghostTex, planeTex;
+
 	private boolean isClientConnected = false;
+	private double startTime, prevTime, elapsedTime;
+	private int serverPort;
+	private int maxSpeed;
+	private double acceleration, stoppingForce, gravity, speed = 0;
 
 	public MyGame(String serverAddress, int serverPort, String protocol)
 	{
 		super();
-		gm = new GhostManager(this);
+
+		ghostManager = new GhostManager(this);
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
+
 		if (protocol.toUpperCase().compareTo("TCP") == 0)
 			this.serverProtocol = ProtocolType.TCP;
 		else
 			this.serverProtocol = ProtocolType.UDP;
+
+		ScriptEngineManager factory = new ScriptEngineManager();
+		jsEngine = factory.getEngineByName("js");
+		scriptFile = new File("assets/scripts/params.js");
 	}
 
 	public static void main(String[] args)
@@ -78,47 +92,26 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void loadShapes()
 	{
-		torS = new Torus(0.5f, 0.2f, 48);
-		ghostS = new Sphere();
-		dolS = new ImportedModel("dolphinHighPoly.obj");
-		linxS = new Line(new Vector3f(0f, 0f, 0f), new Vector3f(3f, 0f, 0f));
-		linyS = new Line(new Vector3f(0f, 0f, 0f), new Vector3f(0f, 3f, 0f));
-		linzS = new Line(new Vector3f(0f, 0f, 0f), new Vector3f(0f, 0f, -3f));
+		ghostShape = new Sphere();
+		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
+		planeShape = new Plane();
 	}
 
 	@Override
 	public void loadTextures()
 	{
-		doltx = new TextureImage("Dolphin_HighPolyUV.png");
-		ghostT = new TextureImage("redDolphin.jpg");
+		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
+		ghostTex = new TextureImage("redDolphin.jpg");
+		planeTex = new TextureImage("checkerboardSmall.JPG");
 	}
 
 	@Override
 	public void buildObjects()
 	{
-		Matrix4f initialTranslation, initialRotation, initialScale;
+		avatar = new GameObject(GameObject.root(), dolphinShape, dolphinTex);
 
-		// build dolphin avatar
-		avatar = new GameObject(GameObject.root(), dolS, doltx);
-		initialTranslation = (new Matrix4f()).translation(-1f, 0f, 1f);
-		avatar.setLocalTranslation(initialTranslation);
-		initialRotation = (new Matrix4f()).rotationY((float) java.lang.Math.toRadians(135.0f));
-		avatar.setLocalRotation(initialRotation);
-
-		// build torus along X axis
-		tor = new GameObject(GameObject.root(), torS);
-		initialTranslation = (new Matrix4f()).translation(1, 0, 0);
-		tor.setLocalTranslation(initialTranslation);
-		initialScale = (new Matrix4f()).scaling(0.25f);
-		tor.setLocalScale(initialScale);
-
-		// add X,Y,-Z axes
-		x = new GameObject(GameObject.root(), linxS);
-		y = new GameObject(GameObject.root(), linyS);
-		z = new GameObject(GameObject.root(), linzS);
-		(x.getRenderStates()).setColor(new Vector3f(1f, 0f, 0f));
-		(y.getRenderStates()).setColor(new Vector3f(0f, 1f, 0f));
-		(z.getRenderStates()).setColor(new Vector3f(0f, 0f, 1f));
+		plane = new GameObject(GameObject.root(), planeShape, planeTex);
+		plane.setLocalScale((new Matrix4f()).scale(50));
 	}
 
 	@Override
@@ -128,15 +121,25 @@ public class MyGame extends VariableFrameRateGame {
 
 		light = new Light();
 		light.setLocation(new Vector3f(0f, 5f, 0f));
-		(engine.getSceneGraph()).addLight(light);
+		engine.getSceneGraph().addLight(light);
 	}
 
 	@Override
 	public void initializeGame()
 	{
+		setupNetworking();
+
 		prevTime = System.currentTimeMillis();
 		startTime = System.currentTimeMillis();
-		(engine.getRenderSystem()).setWindowDimensions(1900, 1000);
+		engine.getRenderSystem().setWindowDimensions(1900, 1000);
+		engine.getRenderSystem().setLocationRelativeTo(null);
+
+		// ----------------- JS section ------------------
+		runScript(scriptFile);
+		maxSpeed = (Integer) jsEngine.get("maxSpeed");
+		acceleration = (Double) jsEngine.get("acceleration");
+		stoppingForce = (Double) jsEngine.get("stoppingForce");
+		gravity = (Double) jsEngine.get("gravity");
 
 		// ----------------- initialize camera ----------------
 		positionCameraBehindAvatar();
@@ -144,17 +147,16 @@ public class MyGame extends VariableFrameRateGame {
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 
-		// build some action objects for doing things in response to user input
-		FwdAction fwdAction = new FwdAction(this, protClient);
-		TurnAction turnAction = new TurnAction(this);
+		FwdAction fwdAction = new FwdAction(this, protocolClient);
+		TurnRightAction turnAction = new TurnRightAction(this);
 
-		// attach the action objects to keyboard and gamepad components
-		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Button._1, fwdAction,
-				InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		im.associateActionWithAllGamepads(net.java.games.input.Component.Identifier.Axis.X, turnAction,
-				InputManager.INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(Identifier.Button._1, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(Identifier.Axis.X, turnAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
-		setupNetworking();
+		im.associateActionWithAllKeyboards(Identifier.Key.W, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key.D, turnAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
+		
 	}
 
 	public GameObject getAvatar()
@@ -167,20 +169,9 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		elapsedTime = System.currentTimeMillis() - prevTime;
 		prevTime = System.currentTimeMillis();
-		amt = elapsedTime * 0.03;
-		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
 
 		// build and set HUD
-		int elapsTimeSec = Math.round((float) (System.currentTimeMillis() - startTime) / 1000.0f);
-		String elapsTimeStr = Integer.toString(elapsTimeSec);
-		String counterStr = Integer.toString(counter);
-		String dispStr1 = "Time = " + elapsTimeStr;
-		String dispStr2 = "camera position = " + (c.getLocation()).x() + ", " + (c.getLocation()).y() + ", "
-				+ (c.getLocation()).z();
-		Vector3f hud1Color = new Vector3f(1, 0, 0);
-		Vector3f hud2Color = new Vector3f(1, 1, 1);
-		(engine.getHUDmanager()).setHUD1(dispStr1, hud1Color, 15, 15);
-		(engine.getHUDmanager()).setHUD2(dispStr2, hud2Color, 500, 15);
+		engine.getHUDmanager().setHUD1(Double.toString(speed), new Vector3f(1, 1, 1), 15, 15);
 
 		// update inputs and camera
 		im.update((float) elapsedTime);
@@ -207,51 +198,45 @@ public class MyGame extends VariableFrameRateGame {
 		c.setN(new Vector3f(n.x(), n.y(), n.z()));
 	}
 
-	@Override
-	public void keyPressed(KeyEvent e)
+	// ---------- SCRIPTING SECTION ----------------
+
+	private void runScript(File scriptFile)
 	{
-		switch (e.getKeyCode())
+		try
 		{
-		case KeyEvent.VK_W:
+			FileReader fileReader = new FileReader(scriptFile);
+			jsEngine.eval(fileReader);
+			fileReader.close();
+		} catch (FileNotFoundException e1)
 		{
-			Vector3f oldPosition = avatar.getWorldLocation();
-			Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
-			fwdDirection.mul(avatar.getWorldRotation());
-			fwdDirection.mul(0.05f);
-			Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
-			avatar.setLocalLocation(newPosition);
-			protClient.sendMoveMessage(avatar.getWorldLocation());
-			break;
-		}
-		case KeyEvent.VK_D:
+			System.out.println(scriptFile + " not found " + e1);
+		} catch (IOException e2)
 		{
-			Matrix4f oldRotation = new Matrix4f(avatar.getWorldRotation());
-			Vector4f oldUp = new Vector4f(0f, 1f, 0f, 1f).mul(oldRotation);
-			Matrix4f rotAroundAvatarUp = new Matrix4f().rotation(-.01f, new Vector3f(oldUp.x(), oldUp.y(), oldUp.z()));
-			Matrix4f newRotation = oldRotation;
-			newRotation.mul(rotAroundAvatarUp);
-			avatar.setLocalRotation(newRotation);
-			break;
+			System.out.println("IO problem with " + scriptFile + e2);
+		} catch (ScriptException e3)
+		{
+			System.out.println("ScriptException in " + scriptFile + e3);
+		} catch (NullPointerException e4)
+		{
+			System.out.println("Null ptr exception reading " + scriptFile + e4);
 		}
-		}
-		super.keyPressed(e);
 	}
 
 	// ---------- NETWORKING SECTION ----------------
 
 	public ObjShape getGhostShape()
 	{
-		return ghostS;
+		return ghostShape;
 	}
 
 	public TextureImage getGhostTexture()
 	{
-		return ghostT;
+		return ghostTex;
 	}
 
 	public GhostManager getGhostManager()
 	{
-		return gm;
+		return ghostManager;
 	}
 
 	public Engine getEngine()
@@ -264,7 +249,7 @@ public class MyGame extends VariableFrameRateGame {
 		isClientConnected = false;
 		try
 		{
-			protClient = new ProtocolClient(InetAddress.getByName(serverAddress), serverPort, serverProtocol, this);
+			protocolClient = new ProtocolClient(InetAddress.getByName(serverAddress), serverPort, serverProtocol, this);
 		} catch (UnknownHostException e)
 		{
 			e.printStackTrace();
@@ -272,20 +257,20 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			e.printStackTrace();
 		}
-		if (protClient == null)
+		if (protocolClient == null)
 		{
 			System.out.println("missing protocol host");
 		} else
 		{ // Send the initial join message with a unique identifier for this client
 			System.out.println("sending join message to protocol host");
-			protClient.sendJoinMessage();
+			protocolClient.sendJoinMessage();
 		}
 	}
 
 	protected void processNetworking(float elapsTime)
 	{ // Process packets received by the client from the server
-		if (protClient != null)
-			protClient.processPackets();
+		if (protocolClient != null)
+			protocolClient.processPackets();
 	}
 
 	public Vector3f getPlayerPosition()
@@ -302,9 +287,9 @@ public class MyGame extends VariableFrameRateGame {
 		@Override
 		public void performAction(float time, net.java.games.input.Event evt)
 		{
-			if (protClient != null && isClientConnected == true)
+			if (protocolClient != null && isClientConnected == true)
 			{
-				protClient.sendByeMessage();
+				protocolClient.sendByeMessage();
 			}
 		}
 	}
