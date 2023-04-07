@@ -29,6 +29,7 @@ import tage.ObjShape;
 import tage.shapes.ImportedModel;
 import tage.shapes.Plane;
 import tage.shapes.Sphere;
+import tage.shapes.TerrainPlane;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
 
@@ -46,16 +47,16 @@ public class MyGame extends VariableFrameRateGame {
 	private static Engine engine;
 
 	private File scriptFile;
-	private GameObject avatar, plane;
+	private GameObject avatar, plane, terrain;
 	private GhostManager ghostManager;
 	private InputManager im;
 	private Light light;
-	private ObjShape ghostShape, dolphinShape, planeShape;
+	private ObjShape ghostShape, dolphinShape, planeShape, terrainShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private ScriptEngine jsEngine;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, planeTex;
+	private TextureImage dolphinTex, ghostTex, planeTex, terrainTex, terrainHeightMap;
 
 	private boolean isClientConnected = false;
 	private double startTime, prevTime, elapsedTime;
@@ -94,7 +95,7 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		ghostShape = new Sphere();
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
-		planeShape = new Plane();
+		terrainShape = new TerrainPlane(1000);
 	}
 
 	@Override
@@ -102,7 +103,8 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
 		ghostTex = new TextureImage("redDolphin.jpg");
-		planeTex = new TextureImage("checkerboardSmall.JPG");
+		terrainTex = new TextureImage("tileable_grass_01.png");
+		terrainHeightMap = new TextureImage("terrain1.jpg");
 	}
 
 	@Override
@@ -110,8 +112,11 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		avatar = new GameObject(GameObject.root(), dolphinShape, dolphinTex);
 
-		plane = new GameObject(GameObject.root(), planeShape, planeTex);
-		plane.setLocalScale((new Matrix4f()).scale(50));
+		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
+		terrain.setIsTerrain(true);
+		terrain.getRenderStates().setTiling(1);
+		terrain.setLocalScale((new Matrix4f()).scale(40, 8, 40));
+		terrain.setHeightMap(terrainHeightMap);
 	}
 
 	@Override
@@ -148,15 +153,15 @@ public class MyGame extends VariableFrameRateGame {
 		im = engine.getInputManager();
 
 		FwdAction fwdAction = new FwdAction(this, protocolClient);
-		TurnRightAction turnAction = new TurnRightAction(this);
+		TurnRightAction turnRightAction = new TurnRightAction(this);
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		im.associateActionWithAllGamepads(Identifier.Axis.X, turnAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
 		im.associateActionWithAllKeyboards(Identifier.Key.W, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		im.associateActionWithAllKeyboards(Identifier.Key.D, turnAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
-		
+
 	}
 
 	public GameObject getAvatar()
@@ -220,6 +225,12 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			System.out.println("Null ptr exception reading " + scriptFile + e4);
 		}
+	}
+
+	private void updateScripts()
+	{
+		runScript(scriptFile);
+
 	}
 
 	// ---------- NETWORKING SECTION ----------------
