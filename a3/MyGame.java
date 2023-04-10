@@ -59,10 +59,13 @@ public class MyGame extends VariableFrameRateGame {
 	private TextureImage dolphinTex, ghostTex, planeTex, terrainTex, terrainHeightMap;
 
 	private boolean isClientConnected = false;
-	private double startTime, prevTime, elapsedTime;
 	private int serverPort;
+
+	private boolean isFalling = false;
+	private double startTime, prevTime, elapsedTime;
+	private float elapsed;
 	private int maxSpeed;
-	private double acceleration, stoppingForce, gravity, speed = 0;
+	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 
 	public MyGame(String serverAddress, int serverPort, String protocol)
 	{
@@ -80,6 +83,7 @@ public class MyGame extends VariableFrameRateGame {
 		ScriptEngineManager factory = new ScriptEngineManager();
 		jsEngine = factory.getEngineByName("js");
 		scriptFile = new File("assets/scripts/params.js");
+		updateScripts();
 	}
 
 	public static void main(String[] args)
@@ -95,7 +99,9 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		ghostShape = new Sphere();
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
+		// terrainShape = new TerrainPlane(1000, 1);
 		terrainShape = new TerrainPlane(1000);
+		planeShape = new Plane();
 	}
 
 	@Override
@@ -105,17 +111,21 @@ public class MyGame extends VariableFrameRateGame {
 		ghostTex = new TextureImage("redDolphin.jpg");
 		terrainTex = new TextureImage("tileable_grass_01.png");
 		terrainHeightMap = new TextureImage("terrain1.jpg");
+		planeTex = new TextureImage("checkerboardSmall.JPG");
 	}
 
 	@Override
 	public void buildObjects()
 	{
 		avatar = new GameObject(GameObject.root(), dolphinShape, dolphinTex);
+		// plane = new GameObject(GameObject.root(), planeShape, planeTex);
+		// plane.setLocalScale((new Matrix4f()).scale(20, 0, 20));
+		// plane.setLocalLocation(new Vector3f(0f, -0.2f, 0f));
 
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
-		terrain.setLocalScale((new Matrix4f()).scale(40, 8, 40));
+		terrain.setLocalScale((new Matrix4f()).scale(20, 4, 20));
 		terrain.setHeightMap(terrainHeightMap);
 	}
 
@@ -139,28 +149,24 @@ public class MyGame extends VariableFrameRateGame {
 		engine.getRenderSystem().setWindowDimensions(1900, 1000);
 		engine.getRenderSystem().setLocationRelativeTo(null);
 
-		// ----------------- JS section ------------------
-		runScript(scriptFile);
-		maxSpeed = (Integer) jsEngine.get("maxSpeed");
-		acceleration = (Double) jsEngine.get("acceleration");
-		stoppingForce = (Double) jsEngine.get("stoppingForce");
-		gravity = (Double) jsEngine.get("gravity");
-
 		// ----------------- initialize camera ----------------
 		positionCameraBehindAvatar();
 
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 
-		FwdAction fwdAction = new FwdAction(this, protocolClient);
-		TurnRightAction turnRightAction = new TurnRightAction(this);
+		AccelAction accelAction = new AccelAction(this, protocolClient);
+		DecelAction decelAction = new DecelAction(this, protocolClient);
+		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef);
+		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef);
 
-		im.associateActionWithAllGamepads(Identifier.Button._1, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
-		im.associateActionWithAllKeyboards(Identifier.Key.W, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key.W, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key.S, decelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-
+		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
 	}
 
@@ -174,14 +180,19 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		elapsedTime = System.currentTimeMillis() - prevTime;
 		prevTime = System.currentTimeMillis();
+		elapsed = (float) (elapsedTime / 1000.0);
 
 		// build and set HUD
-		engine.getHUDmanager().setHUD1(Double.toString(speed), new Vector3f(1, 1, 1), 15, 15);
+		String speedString = String.format("Speed: %.2f", speed);
+		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
 
 		// update inputs and camera
-		im.update((float) elapsedTime);
+		stoppingForce(elapsed);
+		applyGravity(elapsed);
+		im.update(elapsed);
 		positionCameraBehindAvatar();
-		processNetworking((float) elapsedTime);
+		updatePosition();
+		processNetworking(elapsed);
 	}
 
 	private void positionCameraBehindAvatar()
@@ -203,8 +214,111 @@ public class MyGame extends VariableFrameRateGame {
 		c.setN(new Vector3f(n.x(), n.y(), n.z()));
 	}
 
+	public double getSpeed()
+	{
+		return speed;
+	}
+
+	public boolean getIsFalling()
+	{
+		return isFalling;
+	}
+
+	public int getMaxSpeed()
+	{
+		return maxSpeed;
+	}
+
+	public void accelerate(float time)
+	{
+		if (isFalling)
+		{
+			return;
+		}
+
+		speed += time * acceleration;
+
+		if (speed > maxSpeed)
+		{
+			speed = maxSpeed;
+		}
+	}
+
+	public void decelerate(float time)
+	{
+		if (isFalling)
+		{
+			return;
+		}
+
+		speed -= time * deceleration;
+
+		if (speed < 0)
+		{
+			speed = 0;
+		}
+	}
+
+	private void stoppingForce(float time)
+	{
+		speed -= time * stoppingForce;
+
+		if (speed < 0)
+		{
+			speed = 0;
+		}
+	}
+
+	private void applyGravity(float time)
+	{
+		Vector3f pos = avatar.getWorldLocation();
+		float floor = terrain.getHeight(pos.x, pos.z);
+
+		if (floor < 0)
+		{
+			floor = 0;
+		}
+
+		if (pos.y > floor)
+		{
+			isFalling = true;
+			gravitySpeed += time * gravity;
+			pos.y -= gravitySpeed;
+			if (pos.y < floor)
+			{
+				pos.y = floor;
+				isFalling = false;
+			}
+		}
+		else
+		{
+			isFalling = false;
+			gravitySpeed = 0;
+			pos.y = floor;
+		}
+
+		avatar.setLocalLocation(pos);
+	}
+
+	private void updatePosition()
+	{
+		Vector3f oldPosition = avatar.getWorldLocation();
+		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
+		fwdDirection.mul(avatar.getWorldRotation());
+		fwdDirection.mul((float) (speed * 0.1));
+		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
+		avatar.setLocalLocation(newPosition);
+		protocolClient.sendMoveMessage(newPosition);
+	}
+
 	// ---------- SCRIPTING SECTION ----------------
 
+	/**
+	 * Read and evaluate JS expressions into our JS engine
+	 * 
+	 * @param scriptFile File for JS scripts
+	 * @author Scott V. Gordon
+	 */
 	private void runScript(File scriptFile)
 	{
 		try
@@ -230,7 +344,13 @@ public class MyGame extends VariableFrameRateGame {
 	private void updateScripts()
 	{
 		runScript(scriptFile);
-
+		maxSpeed = (Integer) jsEngine.get("maxSpeed");
+		acceleration = (Double) jsEngine.get("acceleration");
+		stoppingForce = (Double) jsEngine.get("stoppingForce");
+		gravity = (Double) jsEngine.get("gravity");
+		deceleration = (Double) jsEngine.get("deceleration");
+		turnConst = (Double) jsEngine.get("turnConst");
+		turnCoef = (Double) jsEngine.get("turnCoef");
 	}
 
 	// ---------- NETWORKING SECTION ----------------

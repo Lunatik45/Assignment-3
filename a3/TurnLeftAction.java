@@ -8,12 +8,14 @@ import org.joml.*;
 public class TurnLeftAction extends AbstractInputAction {
 	private MyGame game;
 	private GameObject av;
-	private Vector4f oldUp;
-	private Matrix4f rotAroundAvatarUp, oldRotation, newRotation;
+	
+	private float turnConst, turnCoef;
 
-	public TurnLeftAction(MyGame g)
+	public TurnLeftAction(MyGame g, float turnConst, float turnCoef)
 	{
 		game = g;
+		this.turnCoef = turnCoef;
+		this.turnConst = turnConst;
 	}
 
 	@Override
@@ -24,12 +26,15 @@ public class TurnLeftAction extends AbstractInputAction {
 			return; // deadzone
 
 		av = game.getAvatar();
-		oldRotation = new Matrix4f(av.getWorldRotation());
-		oldUp = new Vector4f(0f, 1f, 0f, 1f).mul(oldRotation);
-		rotAroundAvatarUp = new Matrix4f().rotation(.005f, new Vector3f(oldUp.x(), oldUp.y(), oldUp.z()));
-		newRotation = oldRotation;
-		newRotation.mul(rotAroundAvatarUp);
-		av.setLocalRotation(newRotation);
+
+		if (game.getSpeed() > 0 && !game.getIsFalling())
+		{
+			float speed = (float) game.getSpeed();
+			float max = (float) game.getMaxSpeed();
+			float yaw = time * turnCoef * (speed / max) + turnConst;
+			
+			av.worldYaw(yaw);
+		}
 	}
 }
 
