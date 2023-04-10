@@ -1,8 +1,7 @@
-package tage.input;
+package tage.input.action;
 
 import net.java.games.input.Event;
 import tage.*;
-import tage.input.action.AbstractInputAction;
 
 import org.joml.*;
 
