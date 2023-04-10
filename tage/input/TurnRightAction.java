@@ -1,10 +1,12 @@
-package a3;
+package tage.input;
 
 import net.java.games.input.Event;
 import tage.*;
 import tage.input.action.AbstractInputAction;
 
 import org.joml.*;
+
+import a3.MyGame;
 
 public class TurnRightAction extends AbstractInputAction {
 	private MyGame game;

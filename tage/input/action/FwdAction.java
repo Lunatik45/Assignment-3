@@ -1,10 +1,12 @@
-package a3;
+package tage.input.action;
 
 import net.java.games.input.Event;
 import tage.*;
-import tage.input.action.AbstractInputAction;
 
 import org.joml.*;
+
+import a3.MyGame;
+import a3.ProtocolClient;
 
 public class FwdAction extends AbstractInputAction {
 	private MyGame game;

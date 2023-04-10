@@ -20,17 +20,21 @@ import tage.ObjShape;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
 import tage.input.InputManager;
+import tage.input.TurnRightAction;
 import tage.input.IInputManager.INPUT_ACTION_TYPE;
 import tage.input.action.AbstractInputAction;
+import tage.input.action.FwdAction;
+import tage.input.action.BwdAction;
+import tage.input.action.TurnLeftAction;
 import tage.networking.IGameConnection.ProtocolType;
 import tage.shapes.ImportedModel;
-import tage.shapes.Plane;
 import tage.shapes.Sphere;
 import tage.shapes.TerrainPlane;
-
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import tage.TextureImage;
+import tage.VariableFrameRateGame;
 
 /**
  * Assignment 3
@@ -46,16 +50,16 @@ public class MyGame extends VariableFrameRateGame {
 	private static Engine engine;
 
 	private File scriptFile;
-	private GameObject avatar, plane;
+	private GameObject avatar, terrain, trafficCone;
 	private GhostManager ghostManager;
 	private InputManager im;
 	private Light light;
-	private ObjShape ghostShape, dolphinShape, planeShape;
+	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private ScriptEngine jsEngine;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, planeTex;
+	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex;
 	private int lakeIslands;
 	private boolean isClientConnected = false;
 	private double startTime, prevTime, elapsedTime;
@@ -94,16 +98,19 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		ghostShape = new Sphere();
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
-		planeShape = new Plane();
+		trafficConeShape = new ImportedModel("trafficCone.obj");
+		terrainShape = new TerrainPlane(20);
 	}
 
 	@Override
 	public void loadTextures()
 	{
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
+		trafficConeTex = new TextureImage("traffic_cone.png");
 		ghostTex = new TextureImage("redDolphin.jpg");
-		planeTex = new TextureImage("checkerboardSmall.JPG");
-
+		// terrainTex = new TextureImage("small_checkerboard.png");
+		terrainTex = new TextureImage("tileable_grass_01.png");
+		terrainHeightMap = new TextureImage("terrain1.jpg");
 	}
 
 	@Override
@@ -117,10 +124,22 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
-		avatar = new GameObject(GameObject.root(), dolphinShape, dolphinTex);
 
-		plane = new GameObject(GameObject.root(), planeShape, planeTex);
-		plane.setLocalScale((new Matrix4f()).scale(50));
+		avatar = new GameObject(GameObject.root(), dolphinShape, dolphinTex);
+		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
+		trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
+		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
+
+		terrain.setHeightMap(terrainHeightMap);
+		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
+
+		terrain.setLocalScale((new Matrix4f()).scale(20.0f, 8.0f, 20.0f));
+
+		terrain.getRenderStates().setTiling(1);
+		// terrainShape.setTextureCoordinateScale(1.0f/(1000.0f/64.0f));
+		// terrain.setTextureImage(terrainTex);
 	}
 
 	@Override
@@ -157,15 +176,17 @@ public class MyGame extends VariableFrameRateGame {
 		im = engine.getInputManager();
 
 		FwdAction fwdAction = new FwdAction(this, protocolClient);
-		TurnRightAction turnAction = new TurnRightAction(this);
+		BwdAction bwdAction = new BwdAction(this, protocolClient);
+		TurnRightAction turnRightAction = new TurnRightAction(this);
+		TurnLeftAction turnLeftAction = new TurnLeftAction(this);
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		im.associateActionWithAllGamepads(Identifier.Axis.X, turnAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
 		im.associateActionWithAllKeyboards(Identifier.Key.W, fwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		im.associateActionWithAllKeyboards(Identifier.Key.D, turnAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-
-
+		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key.S, bwdAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 	}
 
 	public GameObject getAvatar()
@@ -236,6 +257,12 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			System.out.println("Null ptr exception reading " + scriptFile + e4);
 		}
+	}
+
+	private void updateScripts()
+	{
+		runScript(scriptFile);
+
 	}
 
 	// ---------- NETWORKING SECTION ----------------

@@ -1,5 +1,8 @@
 package tage;
 import org.joml.*;
+
+import com.jogamp.opengl.util.texture.TextureCoords;
+
 import java.util.*;
 import tage.shapes.*;
 
@@ -206,6 +209,39 @@ public abstract class ObjShape
 	protected void setNormalBuffer(int b) { normalBuffer = b; }
 	protected void setBoneWeightBuffer(int b) { boneWeightBuffer = b; }
 	protected void setBoneIndicesBuffer(int b) { boneIndicesBuffer = b; }
+
+	/*
+	 * Sets the scale factor for the texture coordinates of this game object's mesh.
+	 * This can be useful when applying a texture to a large or small object to
+	 * ensure that the texture tiling is appropriate. The scale value is applied
+	 * uniformly to both the U and V texture coordinates.
+	 * @param scale the scale factor to apply to the texture coordinates
+	 */
+	public void setTextureCoordinateScale(float scale) {
+		// for (int i = 0; i < texCoords.length; i++) {
+		// 	System.out.println("texCoords[" + i + "] = " + texCoords[i]);
+		// }
+		// float[] newTexCoords = new float[texCoords.length];
+
+		// for (int i = 0; i < texCoords.length; i+=2) {
+		// 	newTexCoords[i] = texCoords[i] * scale;
+		// 	newTexCoords[i + 1] = texCoords[i + 1] * scale;
+		// }
+
+		// texCoords = newTexCoords;
+
+		// for (int i = 0; i < texCoords.length; i++) {
+		// 	System.out.println("New texCoords[" + i + "] = " + texCoords[i]);
+		// }
+		System.out.println("Length: " + texCoords.length);
+		float[] newTexCoords = new float[]{
+			0.0f, 0.0f,
+			16.0f, 0.0f,
+			16.0f, 16.0f,
+			0.0f, 16.0f
+		};
+		this.setTexCoords(newTexCoords);
+    }
 
 	/** engine use only. */
 	public int getVertexBuffer() { return vertexBuffer; }
