@@ -56,12 +56,12 @@ public class MyGame extends VariableFrameRateGame {
 	private GhostManager ghostManager;
 	private InputManager im;
 	private Light light;
-	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape;
+	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape, boxCarShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private ScriptEngine jsEngine;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex;
+	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, boxCarTex;
 	private int lakeIslands;
 	private boolean isClientConnected = false;
 	private int serverPort;
@@ -107,6 +107,7 @@ public class MyGame extends VariableFrameRateGame {
 		trafficConeShape = new ImportedModel("trafficCone.obj");
 		// terrainShape = new TerrainPlane(1000, 1);
 		terrainShape = new TerrainPlane(1000);
+		boxCarShape = new ImportedModel("box_car.obj");
 	}
 
 	@Override
@@ -115,9 +116,9 @@ public class MyGame extends VariableFrameRateGame {
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
 		trafficConeTex = new TextureImage("traffic_cone.png");
 		ghostTex = new TextureImage("redDolphin.jpg");
-		// terrainTex = new TextureImage("small_checkerboard.png");
 		terrainTex = new TextureImage("tileable_grass_01.png");
 		terrainHeightMap = new TextureImage("terrain1.jpg");
+		boxCarTex = new TextureImage("CarTexture.png");
 	}
 
 	@Override
@@ -131,18 +132,19 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
-		avatar = new GameObject(GameObject.root(), dolphinShape, dolphinTex);
+		avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
 		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		avatar.setLocalScale((new Matrix4f()).scale(0.25f));
 
 		trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
 		trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
 		trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
-		
+
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
 
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
-		terrain.setLocalScale((new Matrix4f()).scale(20, 4, 20));
+		terrain.setLocalScale((new Matrix4f()).scale(50, 4, 50));
 		terrain.setHeightMap(terrainHeightMap);
 		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
 	}
@@ -295,6 +297,9 @@ public class MyGame extends VariableFrameRateGame {
 	private void applyGravity(float time)
 	{
 		Vector3f pos = avatar.getWorldLocation();
+
+		// Little trick to get the bottom of the obj to be on the ground
+		pos.y += avatar.getShape().getLowestVertexY() * 0.25f;
 		float floor = terrain.getHeight(pos.x, pos.z);
 
 		if (floor < 0)
@@ -312,14 +317,15 @@ public class MyGame extends VariableFrameRateGame {
 				pos.y = floor;
 				isFalling = false;
 			}
-		}
-		else
+		} else
 		{
 			isFalling = false;
 			gravitySpeed = 0;
 			pos.y = floor;
 		}
 
+		// Reset position back to normal
+		pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
 		avatar.setLocalLocation(pos);
 	}
 
@@ -364,6 +370,10 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
+	/**
+	 * Run the scripts and update the contstants for the game. This can be run
+	 * during update if you want the values to be edited during runtime.
+	 */
 	private void updateScripts()
 	{
 		runScript(scriptFile);
