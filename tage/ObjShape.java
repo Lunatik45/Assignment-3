@@ -36,6 +36,7 @@ public abstract class ObjShape
 	private int primitiveType = 3; // 1=point, 2=line, 3=triangle(default)
 	private float[] matAmb, matDif, matSpe;
 	private float matShi;
+	private float lowestVertexY;
 
 	/** Instantiates an ObjShape and automatically adds it to the render system's list of shapes. */
 	public ObjShape()
@@ -47,6 +48,7 @@ public abstract class ObjShape
 		setMatSpe(Utils.defSpecular());
 		setMatShi(Utils.defShininess());
 		hasWindingOrderCCW = true;
+		lowestVertexY = 0;
 		Engine.getEngine().getRenderSystem().addShape(this);
 	}
 
@@ -210,6 +212,17 @@ public abstract class ObjShape
 	protected void setBoneWeightBuffer(int b) { boneWeightBuffer = b; }
 	protected void setBoneIndicesBuffer(int b) { boneIndicesBuffer = b; }
 
+	protected void setLowestVertexY(float v)
+	{
+		lowestVertexY = v;
+		System.out.printf("Lowest point y = %.5f\n", v);
+	}
+
+	public float getLowestVertexY()
+	{
+		return lowestVertexY;
+	}
+
 	/*
 	 * Sets the scale factor for the texture coordinates of this game object's mesh.
 	 * This can be useful when applying a texture to a large or small object to
@@ -233,7 +246,7 @@ public abstract class ObjShape
 		// for (int i = 0; i < texCoords.length; i++) {
 		// 	System.out.println("New texCoords[" + i + "] = " + texCoords[i]);
 		// }
-		System.out.println("Length: " + texCoords.length);
+		// System.out.println("Length: " + texCoords.length);
 		float[] newTexCoords = new float[]{
 			0.0f, 0.0f,
 			16.0f, 0.0f,
