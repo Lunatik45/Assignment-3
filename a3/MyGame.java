@@ -17,6 +17,7 @@ import tage.Camera;
 import tage.Engine;
 import tage.GameObject;
 import tage.Light;
+import tage.Log;
 import tage.ObjShape;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
@@ -68,15 +69,18 @@ public class MyGame extends VariableFrameRateGame {
 	private int serverPort;
 	private CameraOrbit3D orbitController;
 	private boolean isFalling = false;
+	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime;
 	private float elapsed;
 	private int maxSpeed;
-	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
+	private boolean updateScriptInRuntime, allowLogLevelChange;
+	private int passes = 0;
 
-	public MyGame(String serverAddress, int serverPort, String protocol)
+	public MyGame(String serverAddress, int serverPort, String protocol, int debug)
 	{
 		super();
 
+		Log.setLogLevel(debug);
 		ghostManager = new GhostManager(this);
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
@@ -90,11 +94,29 @@ public class MyGame extends VariableFrameRateGame {
 		jsEngine = factory.getEngineByName("js");
 		scriptFile = new File("assets/scripts/params.js");
 		updateScripts();
+
+		if (updateScriptInRuntime)
+		{
+			System.out.println("Note: Script will update during runtime.\nCAUTION: Performance may be affected while this mode is in use");
+		}
 	}
 
 	public static void main(String[] args)
 	{
-		MyGame game = new MyGame(args[0], Integer.parseInt(args[1]), args[2]);
+		MyGame game;
+		if (args.length == 3)
+		{
+			game = new MyGame(args[0], Integer.parseInt(args[1]), args[2], 0);
+		} else if (args.length == 4)
+		{
+			game = new MyGame(args[0], Integer.parseInt(args[1]), args[2], Integer.parseInt(args[3]));
+		} else
+		{
+			String msg = String.format(
+					"Invalid number of arguements.\nFormat: java %s SERVER_ADDRESS SERVER_PORT SERVER_PROTOCOL [DEBUG_LEVEL]",
+					MyGame.class.getName());
+			throw new IllegalArgumentException(msg);
+		}
 		engine = new Engine(game);
 		game.initializeSystem();
 		game.game_loop();
@@ -220,6 +242,16 @@ public class MyGame extends VariableFrameRateGame {
 		// positionCameraBehindAvatar();
 		updatePosition();
 		processNetworking(elapsed);
+
+		if (updateScriptInRuntime)
+		{
+			passes++;
+
+			if (passes > 30)
+			{
+				updateScripts();
+			}
+		}
 	}
 
 	private void positionCameraBehindAvatar()
@@ -378,6 +410,7 @@ public class MyGame extends VariableFrameRateGame {
 	 */
 	private void updateScripts()
 	{
+		Log.trace("Updating script");
 		runScript(scriptFile);
 		maxSpeed = (Integer) jsEngine.get("maxSpeed");
 		acceleration = (Double) jsEngine.get("acceleration");
@@ -386,6 +419,14 @@ public class MyGame extends VariableFrameRateGame {
 		deceleration = (Double) jsEngine.get("deceleration");
 		turnConst = (Double) jsEngine.get("turnConst");
 		turnCoef = (Double) jsEngine.get("turnCoef");
+		updateScriptInRuntime = (Boolean) jsEngine.get("updateDuringRuntime");
+		if (updateScriptInRuntime)
+		{
+			if ((Boolean) jsEngine.get("allowLogLevelChange"))
+			{
+				Log.setLogLevel((Integer) jsEngine.get("logLevel"));
+			}
+		}
 	}
 
 	// ---------- NETWORKING SECTION ----------------

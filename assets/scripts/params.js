@@ -5,3 +5,6 @@ var stoppingForce = 0.4;
 var gravity = 0.3;
 var turnConst = 0.01;
 var turnCoef = 1.2;
+var updateDuringRuntime = false;
+var allowLogLevelChange = true;
+var logLevel = 2;
