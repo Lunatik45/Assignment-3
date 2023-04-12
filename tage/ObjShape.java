@@ -215,7 +215,6 @@ public abstract class ObjShape
 	protected void setLowestVertexY(float v)
 	{
 		lowestVertexY = v;
-		System.out.printf("Lowest point y = %.5f\n", v);
 	}
 
 	public float getLowestVertexY()
