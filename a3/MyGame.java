@@ -1,32 +1,43 @@
 package a3;
 
-import java.io.*;
+import java.awt.Cursor;
+import java.awt.Point;
+import java.awt.Robot;
+import java.awt.Toolkit;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseWheelEvent;
+import java.awt.image.BufferedImage;
+import java.io.File;
+import java.io.FileNotFoundException;
+import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-import javax.script.Invocable;
 import javax.script.ScriptEngine;
-import javax.script.ScriptEngineFactory;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
+
 import net.java.games.input.Component.Identifier;
-import tage.*;
 import tage.Camera;
+import tage.CameraOrbit3D;
 import tage.Engine;
 import tage.GameObject;
 import tage.Light;
 import tage.Log;
 import tage.ObjShape;
+import tage.RenderSystem;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
-import tage.input.InputManager;
+import tage.Viewport;
 import tage.input.IInputManager.INPUT_ACTION_TYPE;
+import tage.input.InputManager;
 import tage.input.action.AbstractInputAction;
 import tage.input.action.AccelAction;
-import tage.input.action.FwdAction;
-import tage.input.action.BwdAction;
 import tage.input.action.DecelAction;
 import tage.input.action.TurnLeftAction;
 import tage.input.action.TurnRightAction;
@@ -34,11 +45,6 @@ import tage.networking.IGameConnection.ProtocolType;
 import tage.shapes.ImportedModel;
 import tage.shapes.Sphere;
 import tage.shapes.TerrainPlane;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
-import org.joml.Vector4f;
-import tage.TextureImage;
-import tage.VariableFrameRateGame;
 
 /**
  * Assignment 3
@@ -53,6 +59,7 @@ public class MyGame extends VariableFrameRateGame {
 
 	private static Engine engine;
 
+	private CameraOrbit3D orbitController;
 	private File scriptFile;
 	private GameObject avatar, terrain, trafficCone;
 	private GhostManager ghostManager;
@@ -61,20 +68,21 @@ public class MyGame extends VariableFrameRateGame {
 	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape, boxCarShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
+	private Robot robot;
 	private ScriptEngine jsEngine;
 	private String serverAddress;
 	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, boxCarTex;
-	private int lakeIslands;
+
 	private boolean isClientConnected = false;
-	private int serverPort;
-	private CameraOrbit3D orbitController;
-	private boolean isFalling = false;
+	private boolean isFalling = false, mouseIsRecentering, updateScriptInRuntime, allowLogLevelChange;
+	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime;
 	private float elapsed;
+	private int lakeIslands;
 	private int maxSpeed;
-	private boolean updateScriptInRuntime, allowLogLevelChange;
 	private int passes = 0;
+	private int serverPort;
 
 	public MyGame(String serverAddress, int serverPort, String protocol, int debug)
 	{
@@ -97,7 +105,8 @@ public class MyGame extends VariableFrameRateGame {
 
 		if (updateScriptInRuntime)
 		{
-			System.out.println("Note: Script will update during runtime.\nCAUTION: Performance may be affected while this mode is in use");
+			System.out.println(
+					"Note: Script will update during runtime.\nCAUTION: Performance may be affected while this mode is in use");
 		}
 	}
 
@@ -196,6 +205,7 @@ public class MyGame extends VariableFrameRateGame {
 		// positionCameraBehindAvatar();
 		Camera mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
 		orbitController = new CameraOrbit3D(mainCamera, avatar, engine);
+		initMouseMode();
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 		AccelAction accelAction = new AccelAction(this, protocolClient);
@@ -228,7 +238,6 @@ public class MyGame extends VariableFrameRateGame {
 		String speedString = String.format("Speed: %.2f", speed);
 		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
 
-
 		// My code start -- update avatar to move up with terrain
 		// update altitude of dolphin based on height map
 		// Vector3f loc = avatar.getWorldLocation();
@@ -252,6 +261,8 @@ public class MyGame extends VariableFrameRateGame {
 				updateScripts();
 			}
 		}
+
+		orbitController.updateCameraPosition();
 	}
 
 	private void positionCameraBehindAvatar()
@@ -374,6 +385,74 @@ public class MyGame extends VariableFrameRateGame {
 		protocolClient.sendMoveMessage(newPosition);
 	}
 
+	// ---------- MOUSE CAMERA SECTION ------------
+
+	/**
+	 * Initializes the mouse input as a camera controller.
+	 */
+	private void initMouseMode()
+	{
+		RenderSystem rs = engine.getRenderSystem();
+		Viewport vw = rs.getViewport("MAIN");
+		float left = vw.getActualLeft();
+		float bottom = vw.getActualBottom();
+		float width = vw.getActualWidth();
+		float height = vw.getActualHeight();
+		centerX = (int) (left + width / 2);
+		centerY = (int) (bottom - height / 2);
+		mouseIsRecentering = false;
+
+		try
+		{
+			robot = new Robot();
+		} catch (Exception ex)
+		{
+			throw new RuntimeException("Couldn't create Robot!");
+		}
+
+		recenterMouse();
+		prevMouseX = centerX;
+		prevMouseY = centerY;
+
+		BufferedImage blank = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+		Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(blank, new Point(0, 0), "blank cursor");
+		rs.getGLCanvas().setCursor(blankCursor);
+	}
+
+	@Override
+	public void mouseMoved(MouseEvent e)
+	{
+		if (mouseIsRecentering && centerX == e.getXOnScreen() && centerY == e.getYOnScreen())
+		{
+			mouseIsRecentering = false;
+		} else
+		{
+			curMouseX = e.getXOnScreen();
+			curMouseY = e.getYOnScreen();
+			double mouseDeltaX = prevMouseX - curMouseX;
+			double mouseDeltaY = prevMouseY - curMouseY;
+			orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+
+			recenterMouse();
+			prevMouseX = centerX; // reset prev to center
+			prevMouseY = centerY;
+		}
+	}
+
+	public void mouseWheelMoved(MouseWheelEvent e)
+	{
+		orbitController.mouseZoom(-e.getWheelRotation());
+	}
+
+	/**
+	 * Recenters the mouse.
+	 */
+	private void recenterMouse()
+	{
+		mouseIsRecentering = true;
+		robot.mouseMove((int) centerX, (int) centerY);
+	}
+
 	// ---------- SCRIPTING SECTION ----------------
 
 	/**
@@ -407,6 +486,9 @@ public class MyGame extends VariableFrameRateGame {
 	/**
 	 * Run the scripts and update the contstants for the game. This can be run
 	 * during update if you want the values to be edited during runtime.
+	 * <p>
+	 * In order to update during runtime, 'updateDuringRuntime' must be set to true
+	 * in the JS script
 	 */
 	private void updateScripts()
 	{
