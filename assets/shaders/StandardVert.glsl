@@ -62,5 +62,6 @@ void main(void)
 	vec4 p = vec4(vertPos.x, vertPos.y + (texture(height,texCoord)).r, vertPos.z, 1.0);
 
 	tc = texCoord;
+	if (heightMapped == 1) tc = tc * 10.0;
 	gl_Position = p_matrix * v_matrix * m_matrix * p;
 }
