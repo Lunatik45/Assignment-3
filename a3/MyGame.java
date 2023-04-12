@@ -12,6 +12,7 @@ import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 
 import net.java.games.input.Component.Identifier;
+import tage.*;
 import tage.Camera;
 import tage.Engine;
 import tage.GameObject;
@@ -65,7 +66,7 @@ public class MyGame extends VariableFrameRateGame {
 	private int lakeIslands;
 	private boolean isClientConnected = false;
 	private int serverPort;
-
+	private CameraOrbit3D orbitController;
 	private boolean isFalling = false;
 	private double startTime, prevTime, elapsedTime;
 	private float elapsed;
@@ -170,8 +171,9 @@ public class MyGame extends VariableFrameRateGame {
 		engine.getRenderSystem().setLocationRelativeTo(null);
 
 		// ----------------- initialize camera ----------------
-		positionCameraBehindAvatar();
-
+		// positionCameraBehindAvatar();
+		Camera mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
+		orbitController = new CameraOrbit3D(mainCamera, avatar, engine);
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 		AccelAction accelAction = new AccelAction(this, protocolClient);
@@ -215,7 +217,7 @@ public class MyGame extends VariableFrameRateGame {
 		stoppingForce(elapsed);
 		applyGravity(elapsed);
 		im.update(elapsed);
-		positionCameraBehindAvatar();
+		// positionCameraBehindAvatar();
 		updatePosition();
 		processNetworking(elapsed);
 	}
