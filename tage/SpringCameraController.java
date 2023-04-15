@@ -47,7 +47,6 @@ public class SpringCameraController {
 		dampingFactor = 9.0f;
 		distance = 2.0f;        // distance from camera to avatar
 		deadzone = 0.2;
-		targetPosition = target.getWorldForwardVector();
 		velocity = new Vector3f();
 		
 		// Calculate target position
@@ -58,7 +57,7 @@ public class SpringCameraController {
 		v.mul(target.getWorldRotation());
 		n.mul(target.getWorldRotation());
 		Matrix4f w = target.getWorldTranslation();
-		Vector3f targetPosition = new Vector3f(w.m30(), w.m31(), w.m32());
+		targetPosition = new Vector3f(w.m30(), w.m31(), w.m32());
 		targetPosition.add(-n.x() * 2.0f, -n.y() * 2.0f, -n.z() * 2.0f);
 		targetPosition.add(v.x() * 0.75f, v.y() * 0.75f, v.z() * 0.75f);
 	
@@ -92,7 +91,7 @@ public class SpringCameraController {
 			v.mul(target.getWorldRotation());
 			n.mul(target.getWorldRotation());
 			Matrix4f w = target.getWorldTranslation();
-			Vector3f targetPosition = new Vector3f(w.m30(), w.m31(), w.m32());
+			targetPosition = new Vector3f(w.m30(), w.m31(), w.m32());
 			targetPosition.add(-n.x() * 2.0f, -n.y() * 2.0f, -n.z() * 2.0f);
 			targetPosition.add(v.x() * 0.75f, v.y() * 0.75f, v.z() * 0.75f);
 		
