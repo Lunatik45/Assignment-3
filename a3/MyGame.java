@@ -31,6 +31,7 @@ import tage.Light;
 import tage.Log;
 import tage.ObjShape;
 import tage.RenderSystem;
+import tage.SpringCameraController;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
 import tage.Viewport;
@@ -60,6 +61,7 @@ public class MyGame extends VariableFrameRateGame {
 	private static Engine engine;
 
 	private CameraOrbit3D orbitController;
+	private SpringCameraController springController;
 	private File scriptFile;
 	private GameObject avatar, terrain, trafficCone;
 	private GhostManager ghostManager;
@@ -136,9 +138,9 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		ghostShape = new Sphere();
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
-		trafficConeShape = new ImportedModel("trafficCone.obj");
+		// trafficConeShape = new ImportedModel("trafficCone.obj");
 		// terrainShape = new TerrainPlane(1000, 1);
-		terrainShape = new TerrainPlane(1000);
+		terrainShape = new TerrainPlane(100);
 		boxCarShape = new ImportedModel("box_car.obj");
 	}
 
@@ -146,7 +148,7 @@ public class MyGame extends VariableFrameRateGame {
 	public void loadTextures()
 	{
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
-		trafficConeTex = new TextureImage("traffic_cone.png");
+		// trafficConeTex = new TextureImage("traffic_cone.png");
 		ghostTex = new TextureImage("redDolphin.jpg");
 		terrainTex = new TextureImage("tileable_grass_01.png");
 		terrainHeightMap = new TextureImage("terrain1.jpg");
@@ -168,9 +170,9 @@ public class MyGame extends VariableFrameRateGame {
 		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
 		avatar.setLocalScale((new Matrix4f()).scale(0.25f));
 
-		trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
-		trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
-		trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
+		// trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		// trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
+		// trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
 
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
 
@@ -204,7 +206,7 @@ public class MyGame extends VariableFrameRateGame {
 		// ----------------- initialize camera ----------------
 		// positionCameraBehindAvatar();
 		Camera mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
-		orbitController = new CameraOrbit3D(mainCamera, avatar, engine);
+		springController = new SpringCameraController(mainCamera, avatar, engine);
 		initMouseMode();
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
@@ -262,7 +264,7 @@ public class MyGame extends VariableFrameRateGame {
 			}
 		}
 
-		orbitController.updateCameraPosition();
+		springController.updateCameraPosition(elapsed, speed);
 	}
 
 	private void positionCameraBehindAvatar()
