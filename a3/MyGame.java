@@ -1,12 +1,6 @@
 package a3;
 
-import java.awt.Cursor;
-import java.awt.Point;
 import java.awt.Robot;
-import java.awt.Toolkit;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseWheelEvent;
-import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -17,24 +11,34 @@ import java.net.UnknownHostException;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import javax.swing.ButtonGroup;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.UIManager;
+
+import net.java.games.input.Component.Identifier;
 
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import net.java.games.input.Component.Identifier;
+import tage.audio.AudioManagerFactory;
+import tage.audio.AudioResource;
+import tage.audio.AudioResourceType;
+import tage.audio.IAudioManager;
+import tage.audio.Sound;
+import tage.audio.SoundType;
 import tage.Camera;
-import tage.CameraOrbit3D;
 import tage.Engine;
 import tage.GameObject;
 import tage.Light;
 import tage.Log;
 import tage.ObjShape;
-import tage.RenderSystem;
 import tage.SpringCameraController;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
-import tage.Viewport;
 import tage.input.IInputManager.INPUT_ACTION_TYPE;
 import tage.input.InputManager;
 import tage.input.action.AbstractInputAction;
@@ -44,7 +48,6 @@ import tage.input.action.TurnLeftAction;
 import tage.input.action.TurnRightAction;
 import tage.networking.IGameConnection.ProtocolType;
 import tage.shapes.ImportedModel;
-import tage.shapes.Sphere;
 import tage.shapes.TerrainPlane;
 
 /**
@@ -60,24 +63,25 @@ public class MyGame extends VariableFrameRateGame {
 
 	private static Engine engine;
 
-	private CameraOrbit3D orbitController;
+	private AudioResource engineResource, bgMusicResource;
+	private Camera mainCamera;
 	private SpringCameraController springController;
 	private File scriptFile;
 	private GameObject avatar, terrain, trafficCone;
 	private GhostManager ghostManager;
+	private IAudioManager audioMgr;
 	private InputManager im;
 	private Light light;
 	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape, boxCarShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
-	private Robot robot;
 	private ScriptEngine jsEngine;
+	private Sound engineSound, bgSound;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, boxCarTex;
+	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, avatarTex, greenAvatarTex, redAvatarTex, blueAvatarTex, whiteAvatarTex;
 
 	private boolean isClientConnected = false;
-	private boolean isFalling = false, mouseIsRecentering, updateScriptInRuntime, allowLogLevelChange;
-	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
+	private boolean isFalling = false, updateScriptInRuntime;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime;
 	private float elapsed;
@@ -85,6 +89,7 @@ public class MyGame extends VariableFrameRateGame {
 	private int maxSpeed;
 	private int passes = 0;
 	private int serverPort;
+	private String textureSelection = "";
 
 	public MyGame(String serverAddress, int serverPort, String protocol, int debug)
 	{
@@ -107,13 +112,23 @@ public class MyGame extends VariableFrameRateGame {
 
 		if (updateScriptInRuntime)
 		{
-			System.out.println(
-					"Note: Script will update during runtime.\nCAUTION: Performance may be affected while this mode is in use");
+			Log.print("CAUTION: Script will update during runtime.\n");
+			Log.print("CAUTION: Performance may be affected while this mode is in use.\n");
 		}
+
+		selectCar();
 	}
 
 	public static void main(String[] args)
 	{
+		try
+		{
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+
 		MyGame game;
 		if (args.length == 3)
 		{
@@ -128,15 +143,69 @@ public class MyGame extends VariableFrameRateGame {
 					MyGame.class.getName());
 			throw new IllegalArgumentException(msg);
 		}
+
 		engine = new Engine(game);
 		game.initializeSystem();
 		game.game_loop();
 	}
 
+	/**
+	 * Allows car selection using a JOptionDialog.
+	 */
+	private void selectCar()
+	{
+		JRadioButton greenOption = new JRadioButton("Green");
+		JRadioButton blueOption = new JRadioButton("Blue");
+		JRadioButton redOption = new JRadioButton("Red");
+		JRadioButton whiteOption = new JRadioButton("White");
+
+		// Make it so that only one option can be selected at a time
+		ButtonGroup buttonGroup = new ButtonGroup();
+		buttonGroup.add(greenOption);
+		buttonGroup.add(blueOption);
+		buttonGroup.add(redOption);
+		buttonGroup.add(whiteOption);
+
+		JPanel selectionPanel = new JPanel();
+		selectionPanel.add(new JLabel("Select car type:  "));
+		selectionPanel.add(greenOption);
+		selectionPanel.add(blueOption);
+		selectionPanel.add(redOption);
+		selectionPanel.add(whiteOption);
+
+		int result = JOptionPane.showOptionDialog(null, selectionPanel, "Car Selection", JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.QUESTION_MESSAGE, null, null, null);
+
+		if (result == JOptionPane.OK_OPTION)
+		{
+			if (greenOption.isSelected())
+			{
+				textureSelection = "CarTexture.png";
+			} else if (blueOption.isSelected())
+			{
+				textureSelection = "CarTextureBlue.png";
+			} else if (redOption.isSelected())
+			{
+				textureSelection = "CarTextureRed.png";
+			} else if (whiteOption.isSelected())
+			{
+				textureSelection = "CarTextureWhite.png";
+			}
+		}
+
+		if (textureSelection.length() == 0)
+		{
+			Log.print("No selection. Choosing default.\n");
+			textureSelection = "CarTexture.png";
+		}
+
+		Log.trace("Selection: %s\n", textureSelection);
+	}
+
 	@Override
 	public void loadShapes()
 	{
-		ghostShape = new Sphere();
+		ghostShape = new ImportedModel("box_car.obj");
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
 		// trafficConeShape = new ImportedModel("trafficCone.obj");
 		// terrainShape = new TerrainPlane(1000, 1);
@@ -148,11 +217,19 @@ public class MyGame extends VariableFrameRateGame {
 	public void loadTextures()
 	{
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
-		// trafficConeTex = new TextureImage("traffic_cone.png");
-		ghostTex = new TextureImage("redDolphin.jpg");
+		trafficConeTex = new TextureImage("traffic_cone.png");
+		ghostTex = new TextureImage("CarTexture.png");
 		terrainTex = new TextureImage("tileable_grass_01.png");
+		// terrainTex = new TextureImage("HMT.jpg");
 		terrainHeightMap = new TextureImage("terrain1.jpg");
-		boxCarTex = new TextureImage("CarTexture.png");
+		// terrainHeightMap = new TextureImage("HM1.jpg");
+
+		greenAvatarTex = new TextureImage("CarTexture.png");
+		blueAvatarTex = new TextureImage("CarTextureBlue.png");
+		redAvatarTex = new TextureImage("CarTextureRed.png");
+		whiteAvatarTex = new TextureImage("CarTextureWhite.png");
+
+		avatarTex = getAvatarTex(textureSelection);
 	}
 
 	@Override
@@ -166,21 +243,16 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
-		avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
-		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
-		avatar.setLocalScale((new Matrix4f()).scale(0.25f));
-
-		// trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
-		// trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
-		// trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
-
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
-
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
-		terrain.setLocalScale((new Matrix4f()).scale(50, 4, 50));
+		terrain.setLocalScale((new Matrix4f()).scale(50, 1, 50));
 		terrain.setHeightMap(terrainHeightMap);
-		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
+
+		float heightOffGround = -boxCarShape.getLowestVertexY();
+		avatar = new GameObject(GameObject.root(), boxCarShape, avatarTex);
+		avatar.setLocalScale((new Matrix4f()).scale(0.25f));
+		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
 	}
 
 	@Override
@@ -196,18 +268,21 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void initializeGame()
 	{
-		setupNetworking();
-
 		prevTime = System.currentTimeMillis();
 		startTime = System.currentTimeMillis();
 		engine.getRenderSystem().setWindowDimensions(1900, 1000);
 		engine.getRenderSystem().setLocationRelativeTo(null);
+		mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
+
+		setupNetworking();
+
+		setupSounds();
 
 		// ----------------- initialize camera ----------------
 		// positionCameraBehindAvatar();
 		Camera mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
 		springController = new SpringCameraController(mainCamera, avatar, engine);
-		initMouseMode();
+		// initMouseMode();
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 		AccelAction accelAction = new AccelAction(this, protocolClient);
@@ -222,6 +297,65 @@ public class MyGame extends VariableFrameRateGame {
 		im.associateActionWithAllKeyboards(Identifier.Key.S, decelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+	}
+
+	@Override
+	public void shutdown()
+	{
+		super.shutdown();
+
+		engineSound.release(audioMgr);
+		bgSound.release(audioMgr);
+		engineResource.unload();
+		bgMusicResource.unload();
+		audioMgr.shutdown();
+
+		sendByeMessage();
+	}
+
+	private void setupSounds()
+	{
+		audioMgr = AudioManagerFactory.createAudioManager("tage.audio.joal.JOALAudioManager");
+		if (!audioMgr.initialize())
+		{
+			System.out.println("Audio Manager failed to initialize");
+			return;
+		}
+
+		bgMusicResource = audioMgr.createAudioResource("assets/sounds/Lobo Loco - Fietschie Quietschie (ID 1927).wav", AudioResourceType.AUDIO_STREAM);
+		bgSound = new Sound(bgMusicResource, SoundType.SOUND_MUSIC, 100, true);
+		bgSound.initialize(audioMgr);
+		bgSound.setRollOff(0.0f);
+		bgSound.play(40, true);
+		
+		engineResource = audioMgr.createAudioResource("assets/sounds/engine-6000.wav", AudioResourceType.AUDIO_SAMPLE);
+		engineSound = new Sound(engineResource, SoundType.SOUND_EFFECT, 100, true);
+		engineSound.initialize(audioMgr);
+		engineSound.setMaxDistance(50.0f);
+		engineSound.setMinDistance(3.0f);
+		engineSound.setRollOff(2.0f);
+		engineSound.setLocation(getPlayerPosition());
+		engineSound.play(80, true);
+
+		updateEar();
+	}
+
+	public TextureImage getAvatarTex(String selection)
+	{
+		if (greenAvatarTex.getTextureFile().contains(selection))
+		{
+			return greenAvatarTex;
+		} else if (redAvatarTex.getTextureFile().contains(selection))
+		{
+			return redAvatarTex;
+		} else if (blueAvatarTex.getTextureFile().contains(selection))
+		{
+			return blueAvatarTex;
+		} else 
+		{
+			return whiteAvatarTex;
+		}
+
 	}
 
 	public GameObject getAvatar()
@@ -240,51 +374,42 @@ public class MyGame extends VariableFrameRateGame {
 		String speedString = String.format("Speed: %.2f", speed);
 		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
 
-		// My code start -- update avatar to move up with terrain
-		// update altitude of dolphin based on height map
-		// Vector3f loc = avatar.getWorldLocation();
-		// float height = terr.getHeight(loc.x(), loc.z());
-		// avatar.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
-
 		// update inputs and camera
 		stoppingForce(elapsed);
 		applyGravity(elapsed);
 		im.update(elapsed);
-		// positionCameraBehindAvatar();
 		updatePosition();
 		processNetworking(elapsed);
 
 		if (updateScriptInRuntime)
 		{
-			passes++;
-
-			if (passes > 30)
+			if (++passes > 30)
 			{
 				updateScripts();
+				passes = 0;
 			}
 		}
 
 		springController.updateCameraPosition(elapsed, speed);
+		updateSounds();
 	}
 
-	private void positionCameraBehindAvatar()
+	private void updateSounds()
 	{
-		Vector4f u = new Vector4f(-1f, 0f, 0f, 1f);
-		Vector4f v = new Vector4f(0f, 1f, 0f, 1f);
-		Vector4f n = new Vector4f(0f, 0f, 1f, 1f);
-		u.mul(avatar.getWorldRotation());
-		v.mul(avatar.getWorldRotation());
-		n.mul(avatar.getWorldRotation());
-		Matrix4f w = avatar.getWorldTranslation();
-		Vector3f position = new Vector3f(w.m30(), w.m31(), w.m32());
-		position.add(-n.x() * 2f, -n.y() * 2f, -n.z() * 2f);
-		position.add(v.x() * .75f, v.y() * .75f, v.z() * .75f);
-		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
-		c.setLocation(position);
-		c.setU(new Vector3f(u.x(), u.y(), u.z()));
-		c.setV(new Vector3f(v.x(), v.y(), v.z()));
-		c.setN(new Vector3f(n.x(), n.y(), n.z()));
+		updateEar();
+		engineSound.setLocation(getPlayerPosition());
+		engineSound.setPitch((float) (1 + (speed / maxSpeed) * 1.2));
+
+		// bgSound.setLocation(mainCamera.getLocation());
 	}
+
+	private void updateEar()
+	{
+		audioMgr.getEar().setLocation(mainCamera.getLocation());
+		audioMgr.getEar().setOrientation(mainCamera.getN(), mainCamera.getV());
+	}
+
+	// --------- Movement Section --------
 
 	public double getSpeed()
 	{
@@ -314,6 +439,8 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			speed = maxSpeed;
 		}
+
+		// gasApplied = true;
 	}
 
 	public void decelerate(float time)
@@ -329,6 +456,8 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			speed = 0;
 		}
+
+		// brakeApplied = true;
 	}
 
 	private void stoppingForce(float time)
@@ -349,31 +478,30 @@ public class MyGame extends VariableFrameRateGame {
 		pos.y += avatar.getShape().getLowestVertexY() * 0.25f;
 		float floor = terrain.getHeight(pos.x, pos.z);
 
-		if (floor < 0)
-		{
-			floor = 0;
-		}
-
 		if (pos.y > floor)
 		{
 			isFalling = true;
 			gravitySpeed += time * gravity;
 			pos.y -= gravitySpeed;
-			if (pos.y < floor)
+
+			if (pos.y <= floor)
 			{
 				pos.y = floor;
 				isFalling = false;
+				gravitySpeed = 0;
+				pos.y = floor;
 			}
-		} else
-		{
-			isFalling = false;
-			gravitySpeed = 0;
-			pos.y = floor;
+
+			pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
+			avatar.setLocalLocation(pos);
 		}
 
-		// Reset position back to normal
-		pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
-		avatar.setLocalLocation(pos);
+		else if (pos.y < floor)
+		{
+			pos.y = floor - avatar.getShape().getLowestVertexY() * 0.25f;
+			avatar.setLocalLocation(pos);
+			isFalling = false;
+		}
 	}
 
 	private void updatePosition()
@@ -384,75 +512,7 @@ public class MyGame extends VariableFrameRateGame {
 		fwdDirection.mul((float) (speed * 0.1));
 		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
 		avatar.setLocalLocation(newPosition);
-		protocolClient.sendMoveMessage(newPosition);
-	}
-
-	// ---------- MOUSE CAMERA SECTION ------------
-
-	/**
-	 * Initializes the mouse input as a camera controller.
-	 */
-	private void initMouseMode()
-	{
-		RenderSystem rs = engine.getRenderSystem();
-		Viewport vw = rs.getViewport("MAIN");
-		float left = vw.getActualLeft();
-		float bottom = vw.getActualBottom();
-		float width = vw.getActualWidth();
-		float height = vw.getActualHeight();
-		centerX = (int) (left + width / 2);
-		centerY = (int) (bottom - height / 2);
-		mouseIsRecentering = false;
-
-		try
-		{
-			robot = new Robot();
-		} catch (Exception ex)
-		{
-			throw new RuntimeException("Couldn't create Robot!");
-		}
-
-		recenterMouse();
-		prevMouseX = centerX;
-		prevMouseY = centerY;
-
-		BufferedImage blank = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
-		Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(blank, new Point(0, 0), "blank cursor");
-		rs.getGLCanvas().setCursor(blankCursor);
-	}
-
-	@Override
-	public void mouseMoved(MouseEvent e)
-	{
-		if (mouseIsRecentering && centerX == e.getXOnScreen() && centerY == e.getYOnScreen())
-		{
-			mouseIsRecentering = false;
-		} else
-		{
-			curMouseX = e.getXOnScreen();
-			curMouseY = e.getYOnScreen();
-			double mouseDeltaX = prevMouseX - curMouseX;
-			double mouseDeltaY = prevMouseY - curMouseY;
-			orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
-
-			recenterMouse();
-			prevMouseX = centerX; // reset prev to center
-			prevMouseY = centerY;
-		}
-	}
-
-	public void mouseWheelMoved(MouseWheelEvent e)
-	{
-		orbitController.mouseZoom(-e.getWheelRotation());
-	}
-
-	/**
-	 * Recenters the mouse.
-	 */
-	private void recenterMouse()
-	{
-		mouseIsRecentering = true;
-		robot.mouseMove((int) centerX, (int) centerY);
+		protocolClient.sendMoveMessage(newPosition, avatar.getLocalRotation());
 	}
 
 	// ---------- SCRIPTING SECTION ----------------
@@ -494,7 +554,7 @@ public class MyGame extends VariableFrameRateGame {
 	 */
 	private void updateScripts()
 	{
-		Log.trace("Updating script");
+		Log.trace("Updating script\n");
 		runScript(scriptFile);
 		maxSpeed = (Integer) jsEngine.get("maxSpeed");
 		acceleration = (Double) jsEngine.get("acceleration");
@@ -569,9 +629,27 @@ public class MyGame extends VariableFrameRateGame {
 		return avatar.getWorldLocation();
 	}
 
+	public Matrix4f getPlayerRotation()
+	{
+		return avatar.getLocalRotation();
+	}
+
+	public String getAvatarSelection()
+	{
+		return textureSelection;
+	}
+
 	public void setIsConnected(boolean value)
 	{
 		this.isClientConnected = value;
+	}
+
+	public void sendByeMessage()
+	{
+		if (protocolClient != null && isClientConnected == true)
+		{
+			protocolClient.sendByeMessage();
+		}
 	}
 
 	private class SendCloseConnectionPacketAction extends AbstractInputAction {
