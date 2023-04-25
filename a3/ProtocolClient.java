@@ -4,8 +4,10 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
 
+import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import tage.Log;
 import tage.networking.client.GameConnectionClient;
 
 public class ProtocolClient extends GameConnectionClient {
@@ -32,8 +34,17 @@ public class ProtocolClient extends GameConnectionClient {
 	protected void processPacket(Object message)
 	{
 		String strMessage = (String) message;
-		System.out.println("message received -->" + strMessage);
-		String[] messageTokens = strMessage.split(",");
+		Log.trace("Message recieved: %s\n", strMessage);
+
+		String[] messageTokens;
+		try
+		{
+			messageTokens = strMessage.split(",");
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+			return;
+		}
 
 		// Game specific protocol to handle the message
 		if (messageTokens.length > 0)
@@ -46,7 +57,7 @@ public class ProtocolClient extends GameConnectionClient {
 				{
 					System.out.println("join success confirmed");
 					game.setIsConnected(true);
-					sendCreateMessage(game.getPlayerPosition());
+					sendCreateMessage(game.getPlayerPosition(), game.getPlayerRotation(), game.getAvatarSelection());
 				}
 				if (messageTokens[1].compareTo("failure") == 0)
 				{
@@ -78,9 +89,21 @@ public class ProtocolClient extends GameConnectionClient {
 				Vector3f ghostPosition = new Vector3f(Float.parseFloat(messageTokens[2]),
 						Float.parseFloat(messageTokens[3]), Float.parseFloat(messageTokens[4]));
 
+				Matrix4f rotation = new Matrix4f();
+				int i = 5;
+				for (int j = 0; j < 4; j++)
+				{
+					for (int k = 0; k < 4; k++)
+					{
+						rotation.set(j, k, Float.parseFloat(messageTokens[i++]));
+					}
+				}
+
+				String textureSelection = messageTokens[i];
+
 				try
 				{
-					ghostManager.createGhostAvatar(ghostID, ghostPosition);
+					ghostManager.createGhostAvatar(ghostID, ghostPosition, rotation, textureSelection);
 				} catch (IOException e)
 				{
 					System.out.println("error creating ghost avatar");
@@ -94,7 +117,8 @@ public class ProtocolClient extends GameConnectionClient {
 				// Send the local client's avatar's information
 				// Parse out the id into a UUID
 				UUID ghostID = UUID.fromString(messageTokens[1]);
-				sendDetailsForMessage(ghostID, game.getPlayerPosition());
+				sendDetailsForMessage(ghostID, game.getPlayerPosition(), game.getPlayerRotation(),
+						game.getAvatarSelection());
 			}
 
 			// Handle MOVE message
@@ -109,7 +133,17 @@ public class ProtocolClient extends GameConnectionClient {
 				Vector3f ghostPosition = new Vector3f(Float.parseFloat(messageTokens[2]),
 						Float.parseFloat(messageTokens[3]), Float.parseFloat(messageTokens[4]));
 
-				ghostManager.updateGhostAvatar(ghostID, ghostPosition);
+				Matrix4f rotation = new Matrix4f();
+				int i = 5;
+				for (int j = 0; j < 4; j++)
+				{
+					for (int k = 0; k < 4; k++)
+					{
+						rotation.set(j, k, Float.parseFloat(messageTokens[i++]));
+					}
+				}
+				
+				ghostManager.updateGhostAvatar(ghostID, ghostPosition, rotation);
 			}
 		}
 	}
@@ -150,7 +184,7 @@ public class ProtocolClient extends GameConnectionClient {
 	// Message Format: (create,localId,x,y,z) where x, y, and z represent the
 	// position
 
-	public void sendCreateMessage(Vector3f position)
+	public void sendCreateMessage(Vector3f position, Matrix4f rotation, String textureSelection)
 	{
 		try
 		{
@@ -158,6 +192,15 @@ public class ProtocolClient extends GameConnectionClient {
 			message += "," + position.x();
 			message += "," + position.y();
 			message += "," + position.z();
+			for (int i = 0; i < 4; i++)
+			{
+				for (int j = 0; j < 4; j++)
+				{
+					message += "," + rotation.get(i, j);
+				}
+			}
+
+			message += "," + textureSelection;
 
 			sendPacket(message);
 		} catch (IOException e)
@@ -173,7 +216,7 @@ public class ProtocolClient extends GameConnectionClient {
 	// Message Format: (dsfr,remoteId,localId,x,y,z) where x, y, and z represent the
 	// position.
 
-	public void sendDetailsForMessage(UUID remoteId, Vector3f position)
+	public void sendDetailsForMessage(UUID remoteId, Vector3f position, Matrix4f rotation, String textureSelection)
 	{
 		try
 		{
@@ -181,6 +224,15 @@ public class ProtocolClient extends GameConnectionClient {
 			message += "," + position.x();
 			message += "," + position.y();
 			message += "," + position.z();
+			for (int i = 0; i < 4; i++)
+			{
+				for (int j = 0; j < 4; j++)
+				{
+					message += "," + rotation.get(i, j);
+				}
+			}
+
+			message += "," + textureSelection;
 
 			sendPacket(message);
 		} catch (IOException e)
@@ -193,7 +245,7 @@ public class ProtocolClient extends GameConnectionClient {
 	// Message Format: (move,localId,x,y,z) where x, y, and z represent the
 	// position.
 
-	public void sendMoveMessage(Vector3f position)
+	public void sendMoveMessage(Vector3f position, Matrix4f rotation)
 	{
 		try
 		{
@@ -201,6 +253,13 @@ public class ProtocolClient extends GameConnectionClient {
 			message += "," + position.x();
 			message += "," + position.y();
 			message += "," + position.z();
+			for (int i = 0; i < 4; i++)
+			{
+				for (int j = 0; j < 4; j++)
+				{
+					message += "," + rotation.get(i, j);
+				}
+			}
 
 			sendPacket(message);
 		} catch (IOException e)
