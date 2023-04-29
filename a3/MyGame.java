@@ -1,12 +1,12 @@
 package a3;
 
-import java.awt.Robot;
 import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.ArrayList;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
@@ -41,7 +41,6 @@ import tage.TextureImage;
 import tage.VariableFrameRateGame;
 import tage.input.IInputManager.INPUT_ACTION_TYPE;
 import tage.input.InputManager;
-import tage.input.action.AbstractInputAction;
 import tage.input.action.AccelAction;
 import tage.input.action.DecelAction;
 import tage.input.action.TurnLeftAction;
@@ -68,17 +67,22 @@ public class MyGame extends VariableFrameRateGame {
 	private SpringCameraController springController;
 	private File scriptFile;
 	private GameObject avatar, terrain, trafficCone;
+	private ArrayList<GameObject> stationary, dynamic;
 	private GhostManager ghostManager;
 	private IAudioManager audioMgr;
 	private InputManager im;
 	private Light light;
-	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape, boxCarShape;
+	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape, boxCarShape, building1Shape,
+			building2Shape, building3Shape, building4Shape, trafficB3Shape, trafficB2Shape, trafficB1Shape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private ScriptEngine jsEngine;
 	private Sound engineSound, bgSound;
+	private ArrayList<Sound> ghostSounds;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, avatarTex, greenAvatarTex, redAvatarTex, blueAvatarTex, whiteAvatarTex;
+	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, avatarTex, greenAvatarTex,
+			redAvatarTex, blueAvatarTex, whiteAvatarTex, building1Tex, building2Tex, building3Tex, building4Tex, 
+			trafficTex;
 
 	private boolean isClientConnected = false;
 	private boolean isFalling = false, updateScriptInRuntime;
@@ -100,10 +104,10 @@ public class MyGame extends VariableFrameRateGame {
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 
-		if (protocol.toUpperCase().compareTo("TCP") == 0)
-			this.serverProtocol = ProtocolType.TCP;
-		else
+		if (protocol.toUpperCase().compareTo("UDP") == 0)
 			this.serverProtocol = ProtocolType.UDP;
+		else
+			this.serverProtocol = null;
 
 		ScriptEngineManager factory = new ScriptEngineManager();
 		jsEngine = factory.getEngineByName("js");
@@ -211,6 +215,13 @@ public class MyGame extends VariableFrameRateGame {
 		// terrainShape = new TerrainPlane(1000, 1);
 		terrainShape = new TerrainPlane(100);
 		boxCarShape = new ImportedModel("box_car.obj");
+		building1Shape = new ImportedModel("Building1.obj");
+		building2Shape = new ImportedModel("Building2.obj");
+		building3Shape = new ImportedModel("Building3.obj");
+		building4Shape = new ImportedModel("Building4.obj");
+		trafficB3Shape = new ImportedModel("TrafficBarricade3.obj");
+		trafficB2Shape = new ImportedModel("TrafficBarricade2.obj");
+		trafficB1Shape = new ImportedModel("TrafficBarricade1.obj");
 	}
 
 	@Override
@@ -230,6 +241,13 @@ public class MyGame extends VariableFrameRateGame {
 		whiteAvatarTex = new TextureImage("CarTextureWhite.png");
 
 		avatarTex = getAvatarTex(textureSelection);
+
+		building1Tex = new TextureImage("Building1.jpg");
+		building2Tex = new TextureImage("Building2.jpg");
+		building3Tex = new TextureImage("Building3.jpg");
+		building4Tex = new TextureImage("Building4.jpg");
+
+		trafficTex = new TextureImage("Traffic.jpg");
 	}
 
 	@Override
@@ -243,6 +261,10 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
+		stationary = new ArrayList<GameObject>();
+		dynamic = new ArrayList<GameObject>();
+		GameObject newObj;
+
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
@@ -253,6 +275,49 @@ public class MyGame extends VariableFrameRateGame {
 		avatar = new GameObject(GameObject.root(), boxCarShape, avatarTex);
 		avatar.setLocalScale((new Matrix4f()).scale(0.25f));
 		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
+
+		// Template:
+		// newObj = new GameObject(GameObject.root(), shape, tex);
+		// newObj.setLocalScale((new Matrix4f()).scale(1f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		// stationary.add(newObj);
+
+		// Add object primarily meant to be stationary
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(18f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-4.0f, 0.0f, 0.0f));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.06f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(4.0f, 0.0f, 6.0f));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building3Shape, building3Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.06f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(4.0f, 0.0f, 0.0f));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building4Shape, building4Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(3.0f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-5.0f, 0.0f, 15.0f));
+		stationary.add(newObj);
+
+		// Add objects that have potential to be dynamic (physics)
+		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		dynamic.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), trafficB2Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		dynamic.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), trafficB1Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		dynamic.add(newObj);
 	}
 
 	@Override
@@ -304,6 +369,8 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		super.shutdown();
 
+		ghostManager.shutdown();
+
 		engineSound.release(audioMgr);
 		bgSound.release(audioMgr);
 		engineResource.unload();
@@ -322,12 +389,13 @@ public class MyGame extends VariableFrameRateGame {
 			return;
 		}
 
-		bgMusicResource = audioMgr.createAudioResource("assets/sounds/Lobo Loco - Fietschie Quietschie (ID 1927).wav", AudioResourceType.AUDIO_STREAM);
+		bgMusicResource = audioMgr.createAudioResource("assets/sounds/Lobo Loco - Fietschie Quietschie (ID 1927).wav",
+				AudioResourceType.AUDIO_STREAM);
 		bgSound = new Sound(bgMusicResource, SoundType.SOUND_MUSIC, 100, true);
 		bgSound.initialize(audioMgr);
 		bgSound.setRollOff(0.0f);
 		bgSound.play(40, true);
-		
+
 		engineResource = audioMgr.createAudioResource("assets/sounds/engine-6000.wav", AudioResourceType.AUDIO_SAMPLE);
 		engineSound = new Sound(engineResource, SoundType.SOUND_EFFECT, 100, true);
 		engineSound.initialize(audioMgr);
@@ -351,7 +419,7 @@ public class MyGame extends VariableFrameRateGame {
 		} else if (blueAvatarTex.getTextureFile().contains(selection))
 		{
 			return blueAvatarTex;
-		} else 
+		} else
 		{
 			return whiteAvatarTex;
 		}
@@ -399,8 +467,16 @@ public class MyGame extends VariableFrameRateGame {
 		updateEar();
 		engineSound.setLocation(getPlayerPosition());
 		engineSound.setPitch((float) (1 + (speed / maxSpeed) * 1.2));
+	}
 
-		// bgSound.setLocation(mainCamera.getLocation());
+	public Sound getNewEngineSound()
+	{
+		return new Sound(engineResource, SoundType.SOUND_EFFECT, 100, true);
+	}
+
+	public IAudioManager getAudioManager()
+	{
+		return audioMgr;
 	}
 
 	private void updateEar()
@@ -512,7 +588,7 @@ public class MyGame extends VariableFrameRateGame {
 		fwdDirection.mul((float) (speed * 0.1));
 		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
 		avatar.setLocalLocation(newPosition);
-		protocolClient.sendMoveMessage(newPosition, avatar.getLocalRotation());
+		protocolClient.sendMoveMessage(newPosition, getPlayerLookAt(), engineSound.getPitch());
 	}
 
 	// ---------- SCRIPTING SECTION ----------------
@@ -634,6 +710,17 @@ public class MyGame extends VariableFrameRateGame {
 		return avatar.getLocalRotation();
 	}
 
+	/**
+	 * Gets the lookat target of the player. This is used for the ghost avatars.
+	 * 
+	 * @return The lookat target
+	 */
+	public Vector3f getPlayerLookAt()
+	{
+		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f).mul(avatar.getWorldRotation());
+		return avatar.getWorldLocation().add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
+	}
+
 	public String getAvatarSelection()
 	{
 		return textureSelection;
@@ -651,16 +738,4 @@ public class MyGame extends VariableFrameRateGame {
 			protocolClient.sendByeMessage();
 		}
 	}
-
-	private class SendCloseConnectionPacketAction extends AbstractInputAction {
-		@Override
-		public void performAction(float time, net.java.games.input.Event evt)
-		{
-			if (protocolClient != null && isClientConnected == true)
-			{
-				protocolClient.sendByeMessage();
-			}
-		}
-	}
-
 }
