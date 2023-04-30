@@ -5,7 +5,10 @@ import java.util.HashMap;
 
 import tage.physics.PhysicsObject;
 
+import com.bulletphysics.dynamics.vehicle.DefaultVehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
 import com.bulletphysics.collision.shapes.CollisionShape;
+import com.bulletphysics.collision.shapes.CompoundShape;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
 import com.bulletphysics.linearmath.DefaultMotionState;
@@ -21,6 +24,7 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
     protected Transform transform;
     private CollisionShape shape;
     private RigidBody body;
+    private boolean isVehicle;
     private boolean isDynamic;
     private Vector3f localInertia;
     private DefaultMotionState myMotionState;
@@ -34,6 +38,7 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
         this.transform.setFromOpenGLMatrix(JBulletUtils.double_to_float_array(xform));
         this.isDynamic = (mass != 0f);
         this.shape = shape;
+        this.isVehicle = false;
 
         localInertia = new Vector3f(0, 0, 0);
         if (isDynamic) {
@@ -49,6 +54,37 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
         body.setDamping(0.1f, 0.1f);
 
 	JBulletPhysicsObject.lookUpObject.put(body,this);
+    }
+
+    public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape chassis, boolean isVehicle)
+    {
+        this.uid = uid;
+        this.mass = mass;
+        this.transform = new Transform();
+        this.transform.setFromOpenGLMatrix(JBulletUtils.double_to_float_array(xform));
+        this.isDynamic = (mass != 0f);
+        this.shape = chassis;
+        
+        CompoundShape compound = new CompoundShape();
+        Transform localTransform = new Transform();
+        localTransform.setIdentity();
+
+        compound.addChildShape(localTransform, chassis);
+
+        localInertia = new Vector3f(0, 0, 0);
+        if (isDynamic) {
+            shape.calculateLocalInertia(mass, localInertia);
+        }
+
+        myMotionState = new DefaultMotionState(this.transform);
+        rbInfo = new RigidBodyConstructionInfo(mass, myMotionState, shape, localInertia);
+        
+        body =  new RigidBody(rbInfo);
+        //TODO set reasonable defaults
+        body.setSleepingThresholds(0.05f, 0.05f); //fix for objects stopping too soon
+        body.setDamping(0.1f, 0.1f);
+
+        JBulletPhysicsObject.lookUpObject.put(body,this);
     }
 
     public int getUID() {
@@ -81,6 +117,17 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
         this.mass = mass;
         this.isDynamic = mass != 0;
     }
+
+    public void setRigidBody(RigidBody newRigidBody){
+        if(isVehicle){
+            this.body = newRigidBody;
+        }
+    }
+
+    public boolean isVehicle(){
+        return isVehicle;
+    }
+
     public RigidBody getRigidBody()
     {
         return this.body;

@@ -4,6 +4,8 @@ import tage.*;
 import net.java.games.input.Event;
 import org.joml.*;
 
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
+
 import a3.MyGame;
 import a3.ProtocolClient;
 
@@ -13,11 +15,13 @@ public class DecelAction extends AbstractInputAction {
 	private Vector3f oldPosition, newPosition;
 	private Vector4f fwdDirection;
 	private ProtocolClient protClient;
+	private RaycastVehicle vehicle;
 
-	public DecelAction(MyGame g, ProtocolClient p)
+	public DecelAction(MyGame g, RaycastVehicle v, ProtocolClient p)
 	{
 		game = g;
 		protClient = p;
+		vehicle = v;
 	}
 
 	@Override
@@ -32,7 +36,9 @@ public class DecelAction extends AbstractInputAction {
 		// fwdDirection.z());
 		// av.setLocalLocation(newPosition);
 		// protClient.sendMoveMessage(av.getWorldLocation());
-
-		game.decelerate(time);
+		System.out.println("Decelerating");
+		this.vehicle.applyEngineForce(-3000, 2);
+		this.vehicle.applyEngineForce(-3000, 3);
+		// game.decelerate(time);
 	}
 }

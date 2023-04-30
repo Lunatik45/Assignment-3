@@ -13,14 +13,24 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
+import java.util.Vector;
 
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+import javax.swing.JToggleButton.ToggleButtonModel;
 
+import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+
+import com.bulletphysics.collision.shapes.ScalarType;
+import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
+import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.VehicleTuning;
+import com.bulletphysics.dynamics.vehicle.WheelInfo;
 
 import net.java.games.input.Component.Identifier;
 import tage.Camera;
@@ -46,6 +56,14 @@ import tage.networking.IGameConnection.ProtocolType;
 import tage.shapes.ImportedModel;
 import tage.shapes.Sphere;
 import tage.shapes.TerrainPlane;
+import tage.physics.PhysicsEngine;
+import tage.physics.PhysicsObject;
+import tage.physics.PhysicsEngineFactory;
+import tage.physics.JBullet.*;
+import tage.physics.PhysicsHingeConstraint;
+import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
+
+// Import other shapes as needed
 
 /**
  * Assignment 3
@@ -63,28 +81,35 @@ public class MyGame extends VariableFrameRateGame {
 	private CameraOrbit3D orbitController;
 	private SpringCameraController springController;
 	private File scriptFile;
-	private GameObject avatar, terrain, trafficCone;
+	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, trafficCone, myRoad, frontRW, frontLW, backRW, backLW;
 	private GhostManager ghostManager;
 	private InputManager im;
 	private Light light;
-	private ObjShape ghostShape, dolphinShape, terrainShape, trafficConeShape, boxCarShape;
+	private ObjShape ghostShape, dolphinShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S, trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private Robot robot;
 	private ScriptEngine jsEngine;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, boxCarTex;
+	private TextureImage dolphinTex, ghostTex, terrainTex, trafficConeTex, boxCarTex, myRoadTex;
+	private TextureImage terrainHeightMap, terrainHeightMap1, terrainHeightMap2, terrainHeightMap3, terrainHeightMap4;
+	private float vals[] = new float[16];
 
 	private boolean isClientConnected = false;
 	private boolean isFalling = false, mouseIsRecentering, updateScriptInRuntime, allowLogLevelChange;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
-	private double startTime, prevTime, elapsedTime;
+	private double startTime, prevTime, elapsedTime, amt;
 	private float elapsed;
 	private int lakeIslands;
 	private int maxSpeed;
 	private int passes = 0;
 	private int serverPort;
+	private PhysicsEngine physicsEngine;
+	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP;
+	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
+	private Boolean toggleCamaraType = false;
+	private Boolean rotatingWheels = false;
 
 	public MyGame(String serverAddress, int serverPort, String protocol, int debug)
 	{
@@ -138,21 +163,34 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		ghostShape = new Sphere();
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
-		// trafficConeShape = new ImportedModel("trafficCone.obj");
-		// terrainShape = new TerrainPlane(1000, 1);
+		trafficConeShape = new ImportedModel("trafficCone.obj");
 		terrainShape = new TerrainPlane(100);
+		// terrainQ1S = new TerrainPlane(25);
+		// terrainQ2S = new TerrainPlane(25);
+		// terrainQ3S = new TerrainPlane(25);
+		// terrainQ4S = new TerrainPlane(25);
+		myRoadShape = new ImportedModel("myRoad.obj");
 		boxCarShape = new ImportedModel("box_car.obj");
+		backRWShape = new ImportedModel("BackRightWheel.obj");
+		frontRWShape = new ImportedModel("FrontRightWheel.obj");
+		backLWShape = new ImportedModel("BackLeftWheel.obj");
+		frontLWShape = new ImportedModel("FrontLeftWheel.obj");
 	}
 
 	@Override
 	public void loadTextures()
 	{
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
-		// trafficConeTex = new TextureImage("traffic_cone.png");
+		trafficConeTex = new TextureImage("traffic_cone.png");
 		ghostTex = new TextureImage("redDolphin.jpg");
 		terrainTex = new TextureImage("tileable_grass_01.png");
 		terrainHeightMap = new TextureImage("terrain1.jpg");
+		terrainHeightMap1 = new TextureImage("terrain1_1.jpg");
+		terrainHeightMap2 = new TextureImage("terrain1_2.jpg");
+		terrainHeightMap3 = new TextureImage("terrain1_3.jpg");
+		terrainHeightMap4 = new TextureImage("terrain1_4.jpg");
 		boxCarTex = new TextureImage("CarTexture.png");
+		myRoadTex = new TextureImage("road1.jpg");
 	}
 
 	@Override
@@ -166,21 +204,60 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
-		avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
-		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
-		avatar.setLocalScale((new Matrix4f()).scale(0.25f));
+		// avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
+		avatar = new GameObject(GameObject.root(), boxCarShape);
+		avatar.getRenderStates().setWireframe(true);
+
+		backRW = new GameObject(avatar, backRWShape, boxCarTex);
+		backLW = new GameObject(avatar, backLWShape, boxCarTex);
+		frontRW = new GameObject(avatar, frontRWShape, boxCarTex);
+		frontLW = new GameObject(avatar, frontLWShape, boxCarTex);
+
+		// myRoad = new GameObject(GameObject.root(), myRoadShape, myRoadTex);
+		// myRoad.getRenderStates().setTiling(1);
+		// myRoad.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
 
 		// trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
 		// trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
 		// trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
 
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
-
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
-		terrain.setLocalScale((new Matrix4f()).scale(50, 4, 50));
+		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
 		terrain.setHeightMap(terrainHeightMap);
 		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
+
+		
+		// terrainQ1 = new GameObject(GameObject.root(), terrainQ1S, terrainTex);
+		// terrainQ1.setIsTerrain(true);
+		// terrainQ1.getRenderStates().setTiling(1);
+		// terrainQ1.setLocalScale((new Matrix4f()).scale(50, 4, 50));
+		// terrainQ1.setHeightMap(terrainHeightMap1);
+		// terrainQ1.setLocalTranslation((new Matrix4f()).translation(50f, 0f, 50f));
+
+		// terrainQ2 = new GameObject(GameObject.root(), terrainQ2S, terrainTex);
+		// terrainQ2.setIsTerrain(true);
+		// terrainQ2.getRenderStates().setTiling(1);
+		// terrainQ2.setLocalScale((new Matrix4f()).scale(50, 4, 50));
+		// terrainQ2.setHeightMap(terrainHeightMap2);
+		// terrainQ2.setLocalTranslation((new Matrix4f()).translation(-50f, 0f, 50f));
+		// terrainQ2.setLocalScale((new Matrix4f()).scale(1, 1, 1));
+
+		
+		// terrainQ3 = new GameObject(GameObject.root(), terrainQ3S, terrainTex);
+		// terrainQ3.setIsTerrain(true);
+		// terrainQ3.getRenderStates().setTiling(1);
+		// terrainQ3.setLocalScale((new Matrix4f()).scale(50, 4, 50));
+		// terrainQ3.setHeightMap(terrainHeightMap3);
+		// terrainQ3.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
+
+		// terrainQ4 = new GameObject(GameObject.root(), terrainQ4S, terrainTex);
+		// terrainQ4.setIsTerrain(true);
+		// terrainQ4.getRenderStates().setTiling(1);
+		// terrainQ4.setLocalScale((new Matrix4f()).scale(50, 4, 50));
+		// terrainQ4.setHeightMap(terrainHeightMap4);
+		// terrainQ4.setLocalTranslation((new Matrix4f()).translation(50f, 0f, 50f));
 	}
 
 	@Override
@@ -207,21 +284,90 @@ public class MyGame extends VariableFrameRateGame {
 		// positionCameraBehindAvatar();
 		Camera mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
 		springController = new SpringCameraController(mainCamera, avatar, engine);
+		orbitController = new CameraOrbit3D(mainCamera, avatar, engine);
 		initMouseMode();
+
+		// --- initialize physics system ---
+		(engine.getSceneGraph()).setPhysicsDebugEnabled(true);
+		String physEngine = "tage.physics.JBullet.JBulletPhysicsEngine";
+		float[] gravity = {0f, -5f, 0f};
+		physicsEngine = PhysicsEngineFactory.createPhysicsEngine(physEngine);
+		physicsEngine.initSystem();
+		physicsEngine.setGravity(gravity);
+
+		engine.getRenderSystem().setDynamicsWorld(physicsEngine.getDynamicsWorld());
+
+		// --- create physics world ---
+
+		float chassisMass = 1000.0f;
+		float up[] = {0,1,0};
+		double[] tempTransform;
+		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		float[] chassisHalfExtens = {0.6325f, 1.1525f, 0.5025f};
+		avatarP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, tempTransform, chassisHalfExtens);
+		avatar.setPhysicsObject(avatarP);
+		
+		RaycastVehicle vehicle = physicsEngine.getVehicle();
+		VehicleTuning tuning = physicsEngine.getVehicleTuning();
+		
+		// float wheelMass = 25.0f;
+		float[] wheelHalfExtents = new float[]{0.01975f, 0.084625f, 0.0825f};
+		float wheelHeight = 2 * wheelHalfExtents[1];
+		float wheelWidth = 2 * wheelHalfExtents[0];
+
+		javax.vecmath.Vector3f wheelDirectionCS0 = new javax.vecmath.Vector3f(0, -1, 0);
+		javax.vecmath.Vector3f wheelAxleCS = new javax.vecmath.Vector3f(-1, 0, 0);
+		float suspensionRestLength = 0.7f;
+
+		Vector3f wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelHalfExtents[0], wheelHeight , chassisHalfExtens[2] - wheelWidth);
+
+		//Adds the front wheels
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, true);
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint.mul(new Vector3f(-1f, 1f, 1f))), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, true);
+
+
+		//Adds the rear wheels
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint.mul(new Vector3f(1f, 1f, -1f))), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, false);
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint.mul(new Vector3f(-1f, 1f, -1f))), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, false);
+
+		// Edit wheel info for all 4 wheels
+		for(int i = 0; i < 4; i++){
+			WheelInfo wheel = vehicle.getWheelInfo(i);
+			wheel.suspensionStiffness = 50;
+			wheel.wheelsDampingCompression = 0.6f * Math.sqrt(wheel.suspensionStiffness);
+			wheel.wheelsDampingRelaxation = Math.sqrt(wheel.suspensionStiffness);
+			wheel.frictionSlip = 1.2f;
+			wheel.rollInfluence = 1;
+		}
+
+		translation = new Matrix4f(terrain.getLocalTranslation());
+		tempTransform = toDoubleArray(translation.get(vals));
+		terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
+		// terrainP.setBounciness(1.0f);
+		terrain.setPhysicsObject(terrainP);
+
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
-		AccelAction accelAction = new AccelAction(this, protocolClient);
-		DecelAction decelAction = new DecelAction(this, protocolClient);
+		AccelAction accelAction = new AccelAction(this, vehicle, protocolClient);
+		DecelAction decelAction = new DecelAction(this, vehicle, protocolClient);
 		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef);
 		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef);
+		ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
+		TempRotateWheel tempRotateWheels = new TempRotateWheel(this);
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
+
+		//comment this out
 		im.associateActionWithAllKeyboards(Identifier.Key.W, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.S, decelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
+		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCamaraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key._3, tempRotateWheels, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	}
 
 	public GameObject getAvatar()
@@ -232,9 +378,41 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void update()
 	{
+		Matrix4f currentTranslation, currentRotation;
+		double totalTime = System.currentTimeMillis() - startTime;
 		elapsedTime = System.currentTimeMillis() - prevTime;
 		prevTime = System.currentTimeMillis();
 		elapsed = (float) (elapsedTime / 1000.0);
+		amt = elapsedTime * 0.03;
+		double amtt = totalTime * 0.001;
+		
+
+		//Temp trigger to rotate back wheels
+		// if(rotatingWheels){
+		// 	backLW.getPhysicsObject().applyTorque(5, 0, 0);
+		// 	backRW.getPhysicsObject().applyTorque(5, 0, 0);
+		// }
+
+		
+		//update physics
+		if (true) {
+			Matrix4f mat = new Matrix4f();
+			Matrix4f mat2 = new Matrix4f().identity();
+			checkForCollisions();
+			physicsEngine.update((float)elapsedTime);
+			for (GameObject go:engine.getSceneGraph().getGameObjects()) {
+				PhysicsObject PO = go.getPhysicsObject();
+				
+				// Skip the code below and go to the next GameObject if the PO is null or if it's a vehicle
+				if(PO == null) continue;
+				
+				mat.set(toFloatArray(go.getPhysicsObject().getTransform()));
+				mat2.set(3,0,mat.m30());
+				mat2.set(3,1,mat.m31());
+				mat2.set(3,2,mat.m32());
+				go.setLocalTranslation(mat2);
+			}
+		}
 
 		// build and set HUD
 		String speedString = String.format("Speed: %.2f", speed);
@@ -247,11 +425,11 @@ public class MyGame extends VariableFrameRateGame {
 		// avatar.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
 
 		// update inputs and camera
-		stoppingForce(elapsed);
-		applyGravity(elapsed);
+		// stoppingForce(elapsed);
+		// applyGravity(elapsed);
 		im.update(elapsed);
 		// positionCameraBehindAvatar();
-		updatePosition();
+		// updatePosition();
 		processNetworking(elapsed);
 
 		if (updateScriptInRuntime)
@@ -264,7 +442,19 @@ public class MyGame extends VariableFrameRateGame {
 			}
 		}
 
-		springController.updateCameraPosition(elapsed, speed);
+		if(!toggleCamaraType){
+			springController.updateCameraPosition(elapsed, speed);
+		} else {
+			orbitController.updateCameraPosition();
+		}
+	}
+
+	public void toggleCamara(){
+		toggleCamaraType = !toggleCamaraType;
+	}
+
+	public void toggleRotation(){
+		rotatingWheels = !rotatingWheels;
 	}
 
 	private void positionCameraBehindAvatar()
@@ -387,6 +577,34 @@ public class MyGame extends VariableFrameRateGame {
 		protocolClient.sendMoveMessage(newPosition);
 	}
 
+	private void checkForCollisions() {
+		com.bulletphysics.dynamics.DynamicsWorld dynamicsWorld;
+		com.bulletphysics.collision.broadphase.Dispatcher dispatcher;
+		com.bulletphysics.collision.narrowphase.PersistentManifold manifold;
+		com.bulletphysics.dynamics.RigidBody object1, object2;
+		com.bulletphysics.collision.narrowphase.ManifoldPoint contactPoint;
+	
+		dynamicsWorld = ((JBulletPhysicsEngine)physicsEngine).getDynamicsWorld();
+		dispatcher = dynamicsWorld.getDispatcher();
+	
+		int manifoldCount = dispatcher.getNumManifolds();
+		for (int i=0; i<manifoldCount; i++) {
+			manifold = dispatcher.getManifoldByIndexInternal(i);
+			object1 = (com.bulletphysics.dynamics.RigidBody)manifold.getBody0();
+			object2 = (com.bulletphysics.dynamics.RigidBody)manifold.getBody1();
+			JBulletPhysicsObject obj1 = JBulletPhysicsObject.getJBulletPhysicsObject(object1);
+			JBulletPhysicsObject obj2 = JBulletPhysicsObject.getJBulletPhysicsObject(object2);
+	
+			for (int j = 0; j < manifold.getNumContacts(); j++) {
+				contactPoint = manifold.getContactPoint(j);
+				if (contactPoint.getDistance() < 0.0f) {
+					System.out.println("---- hit between " + obj1 + " and " + obj2);
+					break;
+				}
+			}
+		}
+	}
+	
 	// ---------- MOUSE CAMERA SECTION ------------
 
 	/**
@@ -433,7 +651,12 @@ public class MyGame extends VariableFrameRateGame {
 			curMouseY = e.getYOnScreen();
 			double mouseDeltaX = prevMouseX - curMouseX;
 			double mouseDeltaY = prevMouseY - curMouseY;
-			orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+
+			if(!toggleCamaraType){
+				springController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+			} else {
+				orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+			}
 
 			recenterMouse();
 			prevMouseX = centerX; // reset prev to center
@@ -584,5 +807,63 @@ public class MyGame extends VariableFrameRateGame {
 			}
 		}
 	}
+
+	private class ToggleCamaraType extends AbstractInputAction {
+		MyGame myGame;
+
+		ToggleCamaraType(MyGame myGame){
+			this.myGame = myGame;
+		}
+
+		@Override
+		public void performAction(float time, net.java.games.input.Event evt)
+		{
+			myGame.toggleCamara();
+		}
+	}
+
+	private class TempRotateWheel extends AbstractInputAction {
+		MyGame myGame;
+
+		TempRotateWheel(MyGame myGame){
+			this.myGame = myGame;
+		}
+
+		@Override
+		public void performAction(float time, net.java.games.input.Event evt)
+		{
+			myGame.toggleRotation();
+		}
+	}
+
+
+// ------------------ UTILITY FUNCTIONS used by physics
+public static javax.vecmath.Vector3f toJavaxVecmath(Vector3f jomlVec) {
+    return new javax.vecmath.Vector3f(jomlVec.x, jomlVec.y, jomlVec.z);
+}
+
+private float[] toFloatArray(double[] arr) {
+    if (arr == null) {
+        return null;
+    }
+    int n = arr.length;
+    float[] ret = new float[n];
+    for (int i = 0; i < n; i++) {
+        ret[i] = (float)arr[i];
+    }
+    return ret;
+}
+
+private double[] toDoubleArray(float[] arr) {
+    if (arr == null) {
+        return null;
+    }
+    int n = arr.length;
+    double[] ret = new double[n];
+    for (int i = 0; i < n; i++) {
+        ret[i] = (double)arr[i];
+    }
+    return ret;
+}
 
 }

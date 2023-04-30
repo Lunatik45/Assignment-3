@@ -4,6 +4,8 @@ import tage.*;
 import net.java.games.input.Event;
 import org.joml.*;
 
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
+
 import a3.MyGame;
 import a3.ProtocolClient;
 
@@ -13,11 +15,13 @@ public class AccelAction extends AbstractInputAction {
 	private Vector3f oldPosition, newPosition;
 	private Vector4f fwdDirection;
 	private ProtocolClient protClient;
+	private RaycastVehicle vehicle;
 
-	public AccelAction(MyGame g, ProtocolClient p)
+	public AccelAction(MyGame g, RaycastVehicle v, ProtocolClient p)
 	{
 		game = g;
 		protClient = p;
+		vehicle = v;
 	}
 
 	@Override
@@ -31,8 +35,10 @@ public class AccelAction extends AbstractInputAction {
 		// newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
 		// av.setLocalLocation(newPosition);
 		// protClient.sendMoveMessage(av.getWorldLocation());
-
-		game.accelerate(time);
+		System.out.println("Accelerating");
+		this.vehicle.applyEngineForce(5000, 2);
+		this.vehicle.applyEngineForce(5000, 3);
+		// game.accelerate(time);
 	}
 }
 

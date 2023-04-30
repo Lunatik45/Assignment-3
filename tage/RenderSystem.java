@@ -8,6 +8,11 @@ import static com.jogamp.opengl.GL4.*;
 import com.jogamp.opengl.*;
 import com.jogamp.opengl.util.*;
 import com.jogamp.opengl.awt.GLCanvas;
+import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
+import com.bulletphysics.dynamics.DynamicsWorld;
+import com.bulletphysics.collision.dispatch.CollisionObject;
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.linearmath.Transform;
 import com.jogamp.common.nio.Buffers;
 import org.joml.*;
 import tage.shapes.*;
@@ -29,7 +34,7 @@ import tage.objectRenderers.*;
  * 
  * @author Scott Gordon
  */
-public class RenderSystem extends JFrame implements GLEventListener {
+public class  RenderSystem extends JFrame implements GLEventListener {
 	private GLCanvas myCanvas;
 	private Engine engine;
 	private RenderQueue rq;
@@ -37,12 +42,13 @@ public class RenderSystem extends JFrame implements GLEventListener {
 	private RenderObjectSkyBox objectRendererSkyBox;
 	private RenderObjectLine objectRendererLine;
 	private RenderObjectAnimation objectRendererAnimation;
+	private RenderPhysicsObject objectRenderPhysicsObject;
 
 	private float fov = 60.0f;
 	private float nearClip = 0.1f;
 	private float farClip = 1000.0f;
 
-	private int renderingProgram, hudColorProgram, skyboxProgram, lineProgram;
+	private int renderingProgram, hudColorProgram, skyboxProgram, lineProgram, physDebugProgram;
 	private int heightProgram, skelProgram;
 	private int[] vao = new int[1];
 	private int[] vbo = new int[3];
@@ -57,6 +63,7 @@ public class RenderSystem extends JFrame implements GLEventListener {
 	private int defaultTexture;
 	private String defaultTitle = "default title", title;
 	private int screenSizeX, screenSizeY;
+	private DiscreteDynamicsWorld dynamicsWorld;
 
 	private ArrayList<TextureImage> textures = new ArrayList<TextureImage>();
 	private ArrayList<ObjShape> shapes = new ArrayList<ObjShape>();
@@ -94,6 +101,11 @@ public class RenderSystem extends JFrame implements GLEventListener {
 		this.getContentPane().add(myCanvas, BorderLayout.CENTER);
 		this.setVisible(true);
 		(engine.getHUDmanager()).setGLcanvas(myCanvas);
+	}
+
+	public void setDynamicsWorld(DiscreteDynamicsWorld dynamicsWorld)
+	{
+		this.dynamicsWorld = dynamicsWorld;
 	}
 
 	/**
@@ -269,6 +281,16 @@ public class RenderSystem extends JFrame implements GLEventListener {
 					}
 				}
 			}
+
+			if ((engine.getSceneGraph()).isPhysicsDebugEnabled() && dynamicsWorld != null)
+			{
+				// iterate over all rigid bodies in the dynamics world
+				for (int i = 0; i < dynamicsWorld.getNumCollisionObjects(); i++) {
+					// System.out.println("sending in obj");
+					CollisionObject obj = dynamicsWorld.getCollisionObjectArray().getQuick(i);
+					objectRenderPhysicsObject.render(obj, physDebugProgram, pMat, vMat);
+				}
+			}
 		}
 	}
 
@@ -330,10 +352,13 @@ public class RenderSystem extends JFrame implements GLEventListener {
 
 		skelProgram = Utils.createShaderProgram("assets/shaders/skeletalVert.glsl", "assets/shaders/StandardFrag.glsl");
 
+		physDebugProgram = Utils.createShaderProgram("assets/shaders/physDebugVert.glsl", "assets/shaders/physDebugFrag.glsl");
+
 		objectRendererStandard = new RenderObjectStandard(engine);
 		objectRendererSkyBox = new RenderObjectSkyBox(engine);
 		objectRendererLine = new RenderObjectLine(engine);
 		objectRendererAnimation = new RenderObjectAnimation(engine);
+		objectRenderPhysicsObject = new RenderPhysicsObject(engine);
 
 		aspect = (float) myCanvas.getWidth() / (float) myCanvas.getHeight();
 		pMat.setPerspective((float) Math.toRadians(fov), aspect, nearClip, farClip);

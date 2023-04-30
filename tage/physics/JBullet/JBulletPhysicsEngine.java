@@ -16,6 +16,11 @@ import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
 
+//Move into JBulletVehicleObject.java file - not made yet
+import com.bulletphysics.dynamics.vehicle.DefaultVehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
+import com.bulletphysics.dynamics.vehicle.VehicleTuning;
+
 /**
  * This class provides an implementation of the PhysicsEngine interface using the JBullet physics engine.
  * 
@@ -29,6 +34,8 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		private static final int MAX_PHYSICS_OBJECTS = 1024;
 		private static int nextUID;
 
+		private RaycastVehicle vehicle;
+		private VehicleTuning myVehicleTuning;
 		private DefaultCollisionConfiguration collisionConfiguration;
 		private CollisionDispatcher dispatcher;
 		private SequentialImpulseConstraintSolver solver;
@@ -271,6 +278,35 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			return cylinderObject;
 		}
 
+		public PhysicsObject addVehicleObject(int uid, float mass, double [] transform, float[] size){
+			
+			JBulletVehicleObject vehicleObject = new JBulletVehicleObject(uid, mass, transform, size);
+			this.dynamicsWorld.addRigidBody(vehicleObject.getRigidBody());
+			this.objects.add(vehicleObject);
+
+			DefaultVehicleRaycaster vehicleRC = new DefaultVehicleRaycaster(this.dynamicsWorld);
+
+			myVehicleTuning = new VehicleTuning();
+			this.vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody(), vehicleRC);
+
+			//Disable Deactivation
+			vehicleObject.getRigidBody().setActivationState(1);
+
+			this.dynamicsWorld.addVehicle(vehicle);
+
+			vehicleObject.setRigidBody(vehicle.getRigidBody());
+
+			return vehicleObject;
+		}
+
+		public RaycastVehicle getVehicle(){
+			return vehicle;
+		}
+
+		public VehicleTuning getVehicleTuning(){
+			return myVehicleTuning;
+		}
+
 		public PhysicsObject addStaticPlaneObject(int uid, double[] transform, float[] up_vector,
 				float plane_constant) {
 			JBulletStaticPlaneObject planeObject = new JBulletStaticPlaneObject(uid, transform,
@@ -324,6 +360,13 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			return hingeConstraint;
 		}
 
+		// @Override
+		// public PhysicsHingeConstraint addHingeConstraint(int uid, PhysicsObject bodyA, PhysicsObject bodyB, float axisX, float axisY, float axisZ, Vector3f pivotOffsetA, Vector3f pivotOffsetB) {
+		// 	JBulletHingeConstraint hingeConstraint = new JBulletHingeConstraint(uid, (JBulletPhysicsObject) bodyA, (JBulletPhysicsObject) bodyB, axisX, axisY, axisZ, pivotOffsetA, pivotOffsetB);
+		// 	dynamicsWorld.addConstraint(hingeConstraint.getConstraint());
+		// 	return hingeConstraint;
+		// }
+
 		@Override
 		public PhysicsBallSocketConstraint addBallSocketConstraint(int uid, PhysicsObject bodyA, PhysicsObject bodyB) {
 			JBulletBallSocketConstraint ballSocketConstraint = new JBulletBallSocketConstraint(uid, (JBulletPhysicsObject)bodyA, (JBulletPhysicsObject)bodyB);
@@ -331,6 +374,6 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			return ballSocketConstraint;
 		}
 	
-	public DiscreteDynamicsWorld getDynamicsWorld() { return dynamicsWorld; }
-
+		@Override
+		public DiscreteDynamicsWorld getDynamicsWorld() { return dynamicsWorld; }
 }

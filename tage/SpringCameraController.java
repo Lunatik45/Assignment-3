@@ -84,7 +84,7 @@ public class SpringCameraController {
 		
 		if(avatarSpeed > 0.0001d) {
 			// Calculate target position
-			Vector4f u = new Vector4f(-1f, 0f, 0f, 1f);
+			Vector4f u = new Vector4f(-0.5f, 0f, 0f, 1f);
 			Vector4f v = new Vector4f(0f, 1f, 0f, 1f);
 			Vector4f n = new Vector4f(0f, 0f, 1f, 1f);
 			u.mul(target.getWorldRotation());

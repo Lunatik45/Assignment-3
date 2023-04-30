@@ -1,6 +1,17 @@
 package tage.physics;
 
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
+import com.bulletphysics.dynamics.vehicle.VehicleTuning;
+import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
+
 public interface PhysicsEngine {
+
+	/**
+	 * Currently needed to add to renderSystem / debug
+	 * @return The a dynamicsWorld used by the physicsEngine
+	 */
+	public DiscreteDynamicsWorld getDynamicsWorld();
+
 	/**
 	 * Constants defining the default gravity in the physics world. Note that
 	 * implementations <I>are not constrained to utilize the default values
@@ -76,6 +87,13 @@ public interface PhysicsEngine {
 	public PhysicsObject addCylinderXObject(int uid, float mass,
 			double[] transform, float[] halfExtents);
 
+	public PhysicsObject addVehicleObject(int uid, float mass, double [] transform, float[] size);
+
+
+	public RaycastVehicle getVehicle();
+
+	public VehicleTuning getVehicleTuning();
+
 	/**
 	 * Adds a cylinder object to the physics world. This is the default cylinder
 	 * used in the graphical portion of sage and is aligned length-wise with the
@@ -84,7 +102,7 @@ public interface PhysicsEngine {
 	 * For convenience this object has altered getter/setter for it's transform
 	 * to align with the sage graphical cylinder. By default cylinders are
 	 * created centered at (0, 0, 0), the SAGE one however is created with the
-	 * center of its base at (0, 0, 0).
+	 * center of its base at (0, 0, 0).get
 	 * 
 	 * NOTE: This does not change the other two cylinders available through this
 	 * interface, they are still centered about (0, 0, 0).
@@ -138,7 +156,35 @@ public interface PhysicsEngine {
 	 */
 	public PhysicsHingeConstraint addHingeConstraint(int uid, PhysicsObject bodyA, PhysicsObject bodyB, float axisX, float axisY, float axisZ);
 	
-	
+	/**
+	 * Adds a hinge constraint to the world between two physics objects.
+	 * 
+	 * The pivots can be thought of as an offset in the body's local space. For example
+	 * XYZ on bodyA being 0 1 0 means that the hinge will be 1 unit above body A.
+	 * 
+	 * The axis describes the hinge itself. For example having XYZ equal 0 1 0 means the
+	 * hinge is facing the Y axis and objects constrained to this will move around that vector.
+	 * 
+	 * @param uid
+	 *            The unique ID of the constraint
+	 * @param bodyA
+	 *            The PhysicsObject of the first body
+	 * @param bodyB
+	 *            The PhysicsObject of the second body
+	 * @param axisX
+	 * 			  The X value of the axis direction vector
+	 * @param axisY
+	 * 			  The Y value of the axis direction vector
+	 * @param axisZ
+	 * 			  The Z value of the axis direction vector
+	 * @param pivotOffsetA
+	 * 			  The offset from the center of body A's local coordinate system where the hinge will be attached
+	 * @param pivotOffsetB
+	 * 			  The offset from the center of body B's local coordinate system where the hinge will be attached
+	 * @return The newly created and added IPhysicsHingeConstraint
+	 */
+	// public PhysicsHingeConstraint addHingeConstraint(int uid, PhysicsObject bodyA, PhysicsObject bodyB, float axisX, float axisY, float axisZ, Vector3f pivotOffsetA, Vector3f pivotOffsetB);
+
 	/**
 	 * Removes the {@link PhysicsObject} with the specified UID from the
 	 * physics world, if it exists in the world.
