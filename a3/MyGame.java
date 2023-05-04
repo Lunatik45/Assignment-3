@@ -21,6 +21,7 @@ import javax.swing.UIManager;
 import net.java.games.input.Component.Identifier;
 
 import org.joml.Matrix4f;
+import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
@@ -83,8 +84,9 @@ public class MyGame extends VariableFrameRateGame {
 	private TextureImage dolphinTex, ghostTex, terrainTex, terrainHeightMap, trafficConeTex, avatarTex, greenAvatarTex,
 			redAvatarTex, blueAvatarTex, whiteAvatarTex, building1Tex, building2Tex, building3Tex, building4Tex, 
 			trafficTex;
+	private NpcManager npcManager;
 
-	private boolean isClientConnected = false;
+	private boolean isClientConnected = false, isNpcHandler = false;
 	private boolean isFalling = false, updateScriptInRuntime;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime;
@@ -101,6 +103,7 @@ public class MyGame extends VariableFrameRateGame {
 
 		Log.setLogLevel(debug);
 		ghostManager = new GhostManager(this);
+		npcManager = new NpcManager(this);
 		this.serverAddress = serverAddress;
 		this.serverPort = serverPort;
 
@@ -318,6 +321,26 @@ public class MyGame extends VariableFrameRateGame {
 		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
 		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
 		dynamic.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, 25f));
+		dynamic.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-25f, 0.0f, 25f));
+		dynamic.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-25f, 0.0f, -25f));
+		dynamic.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, -25f));
+		dynamic.add(newObj);
 	}
 
 	@Override
@@ -380,6 +403,39 @@ public class MyGame extends VariableFrameRateGame {
 		sendByeMessage();
 	}
 
+	@Override
+	public void update()
+	{
+		elapsedTime = System.currentTimeMillis() - prevTime;
+		prevTime = System.currentTimeMillis();
+		elapsed = (float) (elapsedTime / 1000.0);
+
+		// build and set HUD
+		String speedString = String.format("Speed: %.2f", speed);
+		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
+
+		// update inputs and camera
+		stoppingForce(elapsed);
+		applyGravity(elapsed);
+		im.update(elapsed);
+		updatePosition();
+		updateNpc(elapsed);
+		processNetworking(elapsed);
+
+		if (updateScriptInRuntime)
+		{
+			if (++passes > 30)
+			{
+				updateScripts();
+				passes = 0;
+			}
+		}
+
+		springController.updateCameraPosition(elapsed, speed);
+		updateSounds();
+	}
+
+	// --------- Audio Section --------
 	private void setupSounds()
 	{
 		audioMgr = AudioManagerFactory.createAudioManager("tage.audio.joal.JOALAudioManager");
@@ -408,60 +464,6 @@ public class MyGame extends VariableFrameRateGame {
 		updateEar();
 	}
 
-	public TextureImage getAvatarTex(String selection)
-	{
-		if (greenAvatarTex.getTextureFile().contains(selection))
-		{
-			return greenAvatarTex;
-		} else if (redAvatarTex.getTextureFile().contains(selection))
-		{
-			return redAvatarTex;
-		} else if (blueAvatarTex.getTextureFile().contains(selection))
-		{
-			return blueAvatarTex;
-		} else
-		{
-			return whiteAvatarTex;
-		}
-
-	}
-
-	public GameObject getAvatar()
-	{
-		return avatar;
-	}
-
-	@Override
-	public void update()
-	{
-		elapsedTime = System.currentTimeMillis() - prevTime;
-		prevTime = System.currentTimeMillis();
-		elapsed = (float) (elapsedTime / 1000.0);
-
-		// build and set HUD
-		String speedString = String.format("Speed: %.2f", speed);
-		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
-
-		// update inputs and camera
-		stoppingForce(elapsed);
-		applyGravity(elapsed);
-		im.update(elapsed);
-		updatePosition();
-		processNetworking(elapsed);
-
-		if (updateScriptInRuntime)
-		{
-			if (++passes > 30)
-			{
-				updateScripts();
-				passes = 0;
-			}
-		}
-
-		springController.updateCameraPosition(elapsed, speed);
-		updateSounds();
-	}
-
 	private void updateSounds()
 	{
 		updateEar();
@@ -483,6 +485,86 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		audioMgr.getEar().setLocation(mainCamera.getLocation());
 		audioMgr.getEar().setOrientation(mainCamera.getN(), mainCamera.getV());
+	}
+
+	// --------- NPC Section --------
+
+	private void updateNpc(float time)
+	{
+		if (!isNpcHandler || npcManager.getNpc() == null)
+		{
+			return;
+		}
+
+		NpcAvatar npc = npcManager.getNpc();
+		double npcSpeed = npc.speed;
+
+		//TODO: Apply gravity
+		Vector3f pos = npc.getWorldLocation();
+		float floor = terrain.getHeight(pos.x, pos.z);
+		pos.y = floor - npc.getShape().getLowestVertexY() * 0.25f;
+		npc.setLocalLocation(pos);
+		
+		npcSpeed -= time * stoppingForce;
+
+		if (npcSpeed < 0)
+		{
+			npcSpeed = 0;
+		}
+
+		if (npc.wantsAccel)
+		{
+			npcSpeed += time * acceleration;
+
+			if (npcSpeed > maxSpeed)
+			{
+				npcSpeed = maxSpeed;
+			}
+		} else if (npc.wantsDecel)
+		{
+			npcSpeed -= time * deceleration;
+
+			if (npcSpeed < 0)
+			{
+				npcSpeed = 0;
+			}
+		}
+
+		if (npc.wantsTurnLeft)
+		{
+			npcSpeed += npcSpeed == 0 ? 0.1 : 0;
+			double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst;
+			npc.worldYaw((float) yaw);
+		} else if (npc.wantsTurnRight)
+		{
+			npcSpeed += npcSpeed == 0 ? 0.1 : 0;
+			double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst * -1;
+			npc.worldYaw((float) yaw);
+		}
+
+		npc.speed = npcSpeed;
+		float pitch = (float) npcSpeed;
+		npc.setSoundPitch(pitch);
+
+		Vector3f oldPosition = npc.getWorldLocation();
+		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
+		fwdDirection.mul(npc.getWorldRotation());
+		fwdDirection.mul((float) (npcSpeed * 0.1));
+		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
+		npc.setLocalLocation(newPosition);
+		
+		// Log.debug("Sending NPC move message\n");
+		protocolClient.sendNpcMoveMessage(newPosition, getLookAt(npc), pitch);
+	}
+
+	public void setPrimaryNpcHandler()
+	{
+		isNpcHandler = true;
+	}
+
+	public NpcManager getNpcManager()
+	{
+		return npcManager;
 	}
 
 	// --------- Movement Section --------
@@ -515,8 +597,6 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			speed = maxSpeed;
 		}
-
-		// gasApplied = true;
 	}
 
 	public void decelerate(float time)
@@ -588,7 +668,7 @@ public class MyGame extends VariableFrameRateGame {
 		fwdDirection.mul((float) (speed * 0.1));
 		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
 		avatar.setLocalLocation(newPosition);
-		protocolClient.sendMoveMessage(newPosition, getPlayerLookAt(), engineSound.getPitch());
+		protocolClient.sendMoveMessage(newPosition, getLookAt(avatar), engineSound.getPitch());
 	}
 
 	// ---------- SCRIPTING SECTION ----------------
@@ -651,6 +731,29 @@ public class MyGame extends VariableFrameRateGame {
 
 	// ---------- NETWORKING SECTION ----------------
 
+	public TextureImage getAvatarTex(String selection)
+	{
+		if (greenAvatarTex.getTextureFile().contains(selection))
+		{
+			return greenAvatarTex;
+		} else if (redAvatarTex.getTextureFile().contains(selection))
+		{
+			return redAvatarTex;
+		} else if (blueAvatarTex.getTextureFile().contains(selection))
+		{
+			return blueAvatarTex;
+		} else
+		{
+			return whiteAvatarTex;
+		}
+
+	}
+
+	public GameObject getAvatar()
+	{
+		return avatar;
+	}
+
 	public ObjShape getGhostShape()
 	{
 		return ghostShape;
@@ -710,6 +813,12 @@ public class MyGame extends VariableFrameRateGame {
 		return avatar.getLocalRotation();
 	}
 
+	public Vector3f getLookAt(GameObject go)
+	{
+		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f).mul(go.getWorldRotation());
+		return go.getWorldLocation().add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
+	}
+
 	/**
 	 * Gets the lookat target of the player. This is used for the ghost avatars.
 	 * 
@@ -717,8 +826,7 @@ public class MyGame extends VariableFrameRateGame {
 	 */
 	public Vector3f getPlayerLookAt()
 	{
-		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f).mul(avatar.getWorldRotation());
-		return avatar.getWorldLocation().add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
+		return getLookAt(avatar);
 	}
 
 	public String getAvatarSelection()
@@ -737,5 +845,60 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			protocolClient.sendByeMessage();
 		}
+	}
+
+	public ArrayList<Vector2f> getNpcTargets()
+	{
+		ArrayList<Vector2f> targets = new ArrayList<>();
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+
+		return targets;
 	}
 }
