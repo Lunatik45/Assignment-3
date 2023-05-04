@@ -37,8 +37,10 @@ public class DecelAction extends AbstractInputAction {
 		// av.setLocalLocation(newPosition);
 		// protClient.sendMoveMessage(av.getWorldLocation());
 		System.out.println("Decelerating");
-		this.vehicle.applyEngineForce(-3000, 2);
-		this.vehicle.applyEngineForce(-3000, 3);
+		this.vehicle.applyEngineForce(0, 2);
+		this.vehicle.applyEngineForce(0, 3);
+		this.vehicle.setBrake(100, 2);
+		this.vehicle.setBrake(100, 3);
 		// game.decelerate(time);
 	}
 }

@@ -6,13 +6,17 @@ import java.util.HashMap;
 import tage.physics.PhysicsObject;
 
 import com.bulletphysics.dynamics.vehicle.DefaultVehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.VehicleTuning;
 import com.bulletphysics.collision.shapes.CollisionShape;
 import com.bulletphysics.collision.shapes.CompoundShape;
+import com.bulletphysics.dynamics.DynamicsWorld;
 import com.bulletphysics.dynamics.RigidBody;
 import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
 import com.bulletphysics.linearmath.DefaultMotionState;
 import com.bulletphysics.linearmath.Transform;
+import org.joml.Matrix4f;
 
 public abstract class JBulletPhysicsObject implements PhysicsObject {
 
@@ -29,6 +33,7 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
     private Vector3f localInertia;
     private DefaultMotionState myMotionState;
     private RigidBodyConstructionInfo rbInfo;
+    private javax.vecmath.Vector3f scale;
 
     public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape shape)
     {
@@ -56,37 +61,57 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
 	JBulletPhysicsObject.lookUpObject.put(body,this);
     }
 
-    public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape chassis, boolean isVehicle)
+    public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape chassis, boolean isVehicle, DynamicsWorld dw)
     {
         this.uid = uid;
         this.mass = mass;
         this.transform = new Transform();
         this.transform.setFromOpenGLMatrix(JBulletUtils.double_to_float_array(xform));
         this.isDynamic = (mass != 0f);
-        this.shape = chassis;
-        
+        this.scale = new javax.vecmath.Vector3f(0.5f, 0.5f, 0.5f);
+
         CompoundShape compound = new CompoundShape();
+
         Transform localTransform = new Transform();
         localTransform.setIdentity();
+        localTransform.origin.set(0, 1, 0);
 
+        // add compund object to dynamicsWorld
+        // compound.setLocalScaling(scale);
+        chassis.setLocalScaling(scale);
         compound.addChildShape(localTransform, chassis);
+
+        this.shape = chassis;
 
         localInertia = new Vector3f(0, 0, 0);
         if (isDynamic) {
             shape.calculateLocalInertia(mass, localInertia);
         }
 
+        // Start position should match matrix passed in
         myMotionState = new DefaultMotionState(this.transform);
-        rbInfo = new RigidBodyConstructionInfo(mass, myMotionState, shape, localInertia);
+        rbInfo = new RigidBodyConstructionInfo(mass, myMotionState, compound, localInertia);
         
         body =  new RigidBody(rbInfo);
-        //TODO set reasonable defaults
+
+        // TODO set reasonable defaults
         body.setSleepingThresholds(0.05f, 0.05f); //fix for objects stopping too soon
         body.setDamping(0.1f, 0.1f);
 
         JBulletPhysicsObject.lookUpObject.put(body,this);
     }
 
+    public javax.vecmath.Matrix4f convertJomlToJavax(org.joml.Matrix4f m) {
+        javax.vecmath.Matrix4f convert = new javax.vecmath.Matrix4f();
+    
+        convert.m00 = m.m00(); convert.m01 = m.m01(); convert.m02 = m.m02(); convert.m03 = m.m03();
+        convert.m10 = m.m10(); convert.m11 = m.m11(); convert.m12 = m.m12(); convert.m13 = m.m13();
+        convert.m20 = m.m20(); convert.m21 = m.m21(); convert.m22 = m.m22(); convert.m23 = m.m23();
+        convert.m30 = m.m30(); convert.m31 = m.m31(); convert.m32 = m.m32(); convert.m33 = m.m33();
+    
+        return convert;
+    }
+    
     public int getUID() {
         return uid;
     }
@@ -132,6 +157,12 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
     {
         return this.body;
     }
+
+    public CollisionShape getShape()
+    {
+        return this.shape;
+    }
+
     public boolean isDynamic()
     {
         return isDynamic;

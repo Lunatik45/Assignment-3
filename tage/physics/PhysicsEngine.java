@@ -3,6 +3,7 @@ package tage.physics;
 import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 import com.bulletphysics.dynamics.vehicle.VehicleTuning;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
+import com.bulletphysics.dynamics.DynamicsWorld;
 
 public interface PhysicsEngine {
 
@@ -88,7 +89,6 @@ public interface PhysicsEngine {
 			double[] transform, float[] halfExtents);
 
 	public PhysicsObject addVehicleObject(int uid, float mass, double [] transform, float[] size);
-
 
 	public RaycastVehicle getVehicle();
 

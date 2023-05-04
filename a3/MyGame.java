@@ -24,6 +24,7 @@ import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
+import org.joml.AxisAngle4f;
 
 import com.bulletphysics.collision.shapes.ScalarType;
 import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
@@ -61,7 +62,6 @@ import tage.physics.PhysicsObject;
 import tage.physics.PhysicsEngineFactory;
 import tage.physics.JBullet.*;
 import tage.physics.PhysicsHingeConstraint;
-import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
 
 // Import other shapes as needed
 
@@ -204,8 +204,17 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
-		// avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
-		avatar = new GameObject(GameObject.root(), boxCarShape);
+		terrain = new GameObject(GameObject.root(), terrainShape);
+		terrain.getRenderStates().setWireframe(true);
+
+		terrain.setIsTerrain(true);
+		terrain.getRenderStates().setTiling(1);
+		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
+		terrain.setHeightMap(terrainHeightMap);
+		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
+
+		avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
+		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 8f, 0.0f));
 		avatar.getRenderStates().setWireframe(true);
 
 		backRW = new GameObject(avatar, backRWShape, boxCarTex);
@@ -221,12 +230,14 @@ public class MyGame extends VariableFrameRateGame {
 		// trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
 		// trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
 
-		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
-		terrain.setIsTerrain(true);
-		terrain.getRenderStates().setTiling(1);
-		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
-		terrain.setHeightMap(terrainHeightMap);
-		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
+		// terrain = new GameObject(GameObject.root(), terrainShape);
+		// terrain.getRenderStates().setWireframe(true);
+
+		// terrain.setIsTerrain(true);
+		// terrain.getRenderStates().setTiling(1);
+		// terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
+		// terrain.setHeightMap(terrainHeightMap);
+		// terrain.setLocalTranslation((new Matrix4f()).translation(0f, -2f, 0f));
 
 		
 		// terrainQ1 = new GameObject(GameObject.root(), terrainQ1S, terrainTex);
@@ -288,71 +299,82 @@ public class MyGame extends VariableFrameRateGame {
 		initMouseMode();
 
 		// --- initialize physics system ---
-		(engine.getSceneGraph()).setPhysicsDebugEnabled(true);
 		String physEngine = "tage.physics.JBullet.JBulletPhysicsEngine";
 		float[] gravity = {0f, -5f, 0f};
 		physicsEngine = PhysicsEngineFactory.createPhysicsEngine(physEngine);
 		physicsEngine.initSystem();
 		physicsEngine.setGravity(gravity);
 
-		engine.getRenderSystem().setDynamicsWorld(physicsEngine.getDynamicsWorld());
-
+		// Used to see boxShape
+		// (engine.getSceneGraph()).setPhysicsDebugEnabled(true);
+		// engine.getRenderSystem().setDynamicsWorld(physicsEngine.getDynamicsWorld());
+		
 		// --- create physics world ---
 
-		float chassisMass = 1000.0f;
+		float chassisMass = 800.0f;
 		float up[] = {0,1,0};
 		double[] tempTransform;
 		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		float[] chassisHalfExtens = {0.6325f, 1.1525f, 0.5025f};
+		// float[] chassisHalfExtens = {0.316f, 0.251f, 0.575f};
+		float [] chassisHalfExtens = {1f, 0.5f, 2f};
 		avatarP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, tempTransform, chassisHalfExtens);
+
 		avatar.setPhysicsObject(avatarP);
 		
 		RaycastVehicle vehicle = physicsEngine.getVehicle();
 		VehicleTuning tuning = physicsEngine.getVehicleTuning();
 		
 		// float wheelMass = 25.0f;
-		float[] wheelHalfExtents = new float[]{0.01975f, 0.084625f, 0.0825f};
-		float wheelHeight = 2 * wheelHalfExtents[1];
-		float wheelWidth = 2 * wheelHalfExtents[0];
+		float wheelRadius = 0.5f;
+		float connectionHeight = 1.2f;
+		float wheelWidth = 0.4f;
+
+		// float[] wheelHalfExtents = new float[]{0.3975f, 0.084625f, 0.0825f};
+		// float wheelRadius = (wheelHalfExtents[1] + wheelHalfExtents[2]) / 2.0f;
+		// float connectionHeight = wheelHalfExtents[2];
+		// float wheelWidth = 2.0f * wheelHalfExtents[0];
 
 		javax.vecmath.Vector3f wheelDirectionCS0 = new javax.vecmath.Vector3f(0, -1, 0);
 		javax.vecmath.Vector3f wheelAxleCS = new javax.vecmath.Vector3f(-1, 0, 0);
-		float suspensionRestLength = 0.7f;
-
-		Vector3f wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelHalfExtents[0], wheelHeight , chassisHalfExtens[2] - wheelWidth);
+		float suspensionRestLength = 0.6f;
 
 		//Adds the front wheels
-		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, true);
-		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint.mul(new Vector3f(-1f, 1f, 1f))), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, true);
-
+		Vector3f wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelRadius, connectionHeight , chassisHalfExtens[2] - wheelWidth);
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, tuning, true);
+	
+		wheelConnectionPoint = new Vector3f(-chassisHalfExtens[0] + wheelRadius, connectionHeight , chassisHalfExtens[2] - wheelWidth);
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, tuning, true);
 
 		//Adds the rear wheels
-		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint.mul(new Vector3f(1f, 1f, -1f))), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, false);
-		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint.mul(new Vector3f(-1f, 1f, -1f))), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelHalfExtents[0], tuning, false);
+		wheelConnectionPoint = new Vector3f(-chassisHalfExtens[0] + wheelRadius, connectionHeight , (-chassisHalfExtens[2]) + wheelWidth);
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, tuning, false);
+		
+		wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelRadius, connectionHeight , (-chassisHalfExtens[2]) + wheelWidth);
+		vehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength, wheelRadius, tuning, false);
 
 		// Edit wheel info for all 4 wheels
 		for(int i = 0; i < 4; i++){
 			WheelInfo wheel = vehicle.getWheelInfo(i);
-			wheel.suspensionStiffness = 50;
-			wheel.wheelsDampingCompression = 0.6f * Math.sqrt(wheel.suspensionStiffness);
-			wheel.wheelsDampingRelaxation = Math.sqrt(wheel.suspensionStiffness);
-			wheel.frictionSlip = 1.2f;
-			wheel.rollInfluence = 1;
+			wheel.suspensionStiffness = 20f;
+			wheel.wheelsDampingCompression = 4.4f;
+			wheel.wheelsDampingRelaxation = 2.3f;
+			wheel.frictionSlip = 1000f;
+			wheel.rollInfluence = 0.1f;
 		}
 
 		translation = new Matrix4f(terrain.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
 		terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
-		// terrainP.setBounciness(1.0f);
+		terrainP.setFriction(1.0f);
 		terrain.setPhysicsObject(terrainP);
 
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 		AccelAction accelAction = new AccelAction(this, vehicle, protocolClient);
 		DecelAction decelAction = new DecelAction(this, vehicle, protocolClient);
-		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef);
-		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef);
+		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
+		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
 		TempRotateWheel tempRotateWheels = new TempRotateWheel(this);
 
@@ -394,23 +416,31 @@ public class MyGame extends VariableFrameRateGame {
 		// }
 
 		
-		//update physics
+		// update physics
 		if (true) {
 			Matrix4f mat = new Matrix4f();
 			Matrix4f mat2 = new Matrix4f().identity();
 			checkForCollisions();
 			physicsEngine.update((float)elapsedTime);
 			for (GameObject go:engine.getSceneGraph().getGameObjects()) {
-				PhysicsObject PO = go.getPhysicsObject();
+				PhysicsObject po = go.getPhysicsObject();
 				
-				// Skip the code below and go to the next GameObject if the PO is null or if it's a vehicle
-				if(PO == null) continue;
+				// Skip the code below and go to the next GameObject if the PO is null
+				if(po == null) continue;
 				
-				mat.set(toFloatArray(go.getPhysicsObject().getTransform()));
+				mat.set(toFloatArray(po.getTransform()));
 				mat2.set(3,0,mat.m30());
 				mat2.set(3,1,mat.m31());
 				mat2.set(3,2,mat.m32());
 				go.setLocalTranslation(mat2);
+				
+				AxisAngle4f aa = new AxisAngle4f();
+				mat.getRotation(aa);
+
+				Matrix4f rotMatrix4f = new Matrix4f();
+				rotMatrix4f.rotation(aa);
+
+				go.setLocalRotation(rotMatrix4f);
 			}
 		}
 
@@ -866,4 +896,14 @@ private double[] toDoubleArray(float[] arr) {
     return ret;
 }
 
+javax.vecmath.Matrix4f convertJomlToJavax(Matrix4f m) {
+	javax.vecmath.Matrix4f convert = new javax.vecmath.Matrix4f();
+	
+	convert.m00 = m.m00(); convert.m01 = m.m01(); convert.m02 = m.m02(); convert.m03 = m.m03();
+	convert.m10 = m.m10(); convert.m11 = m.m11(); convert.m12 = m.m12(); convert.m13 = m.m13();
+	convert.m20 = m.m20(); convert.m21 = m.m21(); convert.m22 = m.m22(); convert.m23 = m.m23();
+	convert.m30 = m.m30(); convert.m31 = m.m31(); convert.m32 = m.m32(); convert.m33 = m.m33();
+	
+	return convert;
+}
 }
