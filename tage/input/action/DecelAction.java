@@ -42,5 +42,6 @@ public class DecelAction extends AbstractInputAction {
 		this.vehicle.setBrake(100, 2);
 		this.vehicle.setBrake(100, 3);
 		// game.decelerate(time);
+		game.decelerate(time);
 	}
 }

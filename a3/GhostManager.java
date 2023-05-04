@@ -8,6 +8,7 @@ import java.util.Vector;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
+import tage.Log;
 import tage.ObjShape;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
@@ -21,14 +22,15 @@ public class GhostManager {
 		game = (MyGame) vfrg;
 	}
 
-	public void createGhostAvatar(UUID id, Vector3f position) throws IOException
+	public void createGhostAvatar(UUID id, Vector3f position, Matrix4f rotation, String textureSelection) throws IOException
 	{
-		System.out.println("adding ghost with ID --> " + id);
+		System.out.println("adding ghost with ID: " + id);
 		ObjShape s = game.getGhostShape();
-		TextureImage t = game.getGhostTexture();
+		TextureImage t = game.getAvatarTex(textureSelection);
 		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position);
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		newAvatar.setLocalScale(initialScale);
+		newAvatar.setLocalRotation(rotation);
 		ghostAvatars.add(newAvatar);
 	}
 
@@ -60,12 +62,13 @@ public class GhostManager {
 		return null;
 	}
 
-	public void updateGhostAvatar(UUID id, Vector3f position)
+	public void updateGhostAvatar(UUID id, Vector3f position, Matrix4f rotation)
 	{
 		GhostAvatar ghostAvatar = findAvatar(id);
 		if (ghostAvatar != null)
 		{
 			ghostAvatar.setPosition(position);
+			ghostAvatar.setLocalRotation(rotation);
 		} else
 		{
 			System.out.println("tried to update ghost avatar position, but unable to find ghost in list");

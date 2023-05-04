@@ -19,6 +19,14 @@ import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
 import javax.swing.JToggleButton.ToggleButtonModel;
+import javax.swing.ButtonGroup;
+import javax.swing.JLabel;
+import javax.swing.JOptionPane;
+import javax.swing.JPanel;
+import javax.swing.JRadioButton;
+import javax.swing.UIManager;
+
+import net.java.games.input.Component.Identifier;
 
 import org.joml.Math;
 import org.joml.Matrix4f;
@@ -33,7 +41,12 @@ import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
 import com.bulletphysics.dynamics.vehicle.VehicleTuning;
 import com.bulletphysics.dynamics.vehicle.WheelInfo;
 
-import net.java.games.input.Component.Identifier;
+import tage.audio.AudioManagerFactory;
+import tage.audio.AudioResource;
+import tage.audio.AudioResourceType;
+import tage.audio.IAudioManager;
+import tage.audio.Sound;
+import tage.audio.SoundType;
 import tage.Camera;
 import tage.CameraOrbit3D;
 import tage.Engine;
@@ -55,13 +68,13 @@ import tage.input.action.TurnLeftAction;
 import tage.input.action.TurnRightAction;
 import tage.networking.IGameConnection.ProtocolType;
 import tage.shapes.ImportedModel;
-import tage.shapes.Sphere;
 import tage.shapes.TerrainPlane;
 import tage.physics.PhysicsEngine;
 import tage.physics.PhysicsObject;
 import tage.physics.PhysicsEngineFactory;
 import tage.physics.JBullet.*;
 import tage.physics.PhysicsHingeConstraint;
+
 
 // Import other shapes as needed
 
@@ -78,11 +91,14 @@ public class MyGame extends VariableFrameRateGame {
 
 	private static Engine engine;
 
+	private AudioResource engineResource, bgMusicResource;
+	private Camera mainCamera;
 	private CameraOrbit3D orbitController;
 	private SpringCameraController springController;
 	private File scriptFile;
 	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, trafficCone, myRoad, frontRW, frontLW, backRW, backLW;
 	private GhostManager ghostManager;
+	private IAudioManager audioMgr;
 	private InputManager im;
 	private Light light;
 	private ObjShape ghostShape, dolphinShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S, trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape;
@@ -90,13 +106,13 @@ public class MyGame extends VariableFrameRateGame {
 	private ProtocolType serverProtocol;
 	private Robot robot;
 	private ScriptEngine jsEngine;
+	private Sound engineSound, bgSound;
 	private String serverAddress;
-	private TextureImage dolphinTex, ghostTex, terrainTex, trafficConeTex, boxCarTex, myRoadTex;
-	private TextureImage terrainHeightMap, terrainHeightMap1, terrainHeightMap2, terrainHeightMap3, terrainHeightMap4;
+	private TextureImage dolphinTex, ghostTex, terrainTex, trafficConeTex, boxCarTex, myRoadTex, avatarTex, greenAvatarTex, redAvatarTex, blueAvatarTex, whiteAvatarTex, terrainHeightMap;
+	private TextureImage terrainHeightMap1, terrainHeightMap2, terrainHeightMap3, terrainHeightMap4; // Used to test something can be removed if not needed
 	private float vals[] = new float[16];
-
 	private boolean isClientConnected = false;
-	private boolean isFalling = false, mouseIsRecentering, updateScriptInRuntime, allowLogLevelChange;
+	private boolean isFalling = false, updateScriptInRuntime;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime, amt;
@@ -108,8 +124,9 @@ public class MyGame extends VariableFrameRateGame {
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP;
 	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
-	private Boolean toggleCamaraType = false;
-	private Boolean rotatingWheels = false;
+	private Boolean toggleCamaraType = true; // Spring camera is currently broken but orbit camera works fine
+	private Boolean mouseIsRecentering = false;
+	private String textureSelection = "";
 
 	public MyGame(String serverAddress, int serverPort, String protocol, int debug)
 	{
@@ -132,13 +149,23 @@ public class MyGame extends VariableFrameRateGame {
 
 		if (updateScriptInRuntime)
 		{
-			System.out.println(
-					"Note: Script will update during runtime.\nCAUTION: Performance may be affected while this mode is in use");
+			Log.print("CAUTION: Script will update during runtime.\n");
+			Log.print("CAUTION: Performance may be affected while this mode is in use.\n");
 		}
+
+		selectCar();
 	}
 
 	public static void main(String[] args)
 	{
+		try
+		{
+			UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+
 		MyGame game;
 		if (args.length == 3)
 		{
@@ -153,15 +180,69 @@ public class MyGame extends VariableFrameRateGame {
 					MyGame.class.getName());
 			throw new IllegalArgumentException(msg);
 		}
+
 		engine = new Engine(game);
 		game.initializeSystem();
 		game.game_loop();
 	}
 
+	/**
+	 * Allows car selection using a JOptionDialog.
+	 */
+	private void selectCar()
+	{
+		JRadioButton greenOption = new JRadioButton("Green");
+		JRadioButton blueOption = new JRadioButton("Blue");
+		JRadioButton redOption = new JRadioButton("Red");
+		JRadioButton whiteOption = new JRadioButton("White");
+
+		// Make it so that only one option can be selected at a time
+		ButtonGroup buttonGroup = new ButtonGroup();
+		buttonGroup.add(greenOption);
+		buttonGroup.add(blueOption);
+		buttonGroup.add(redOption);
+		buttonGroup.add(whiteOption);
+
+		JPanel selectionPanel = new JPanel();
+		selectionPanel.add(new JLabel("Select car type:  "));
+		selectionPanel.add(greenOption);
+		selectionPanel.add(blueOption);
+		selectionPanel.add(redOption);
+		selectionPanel.add(whiteOption);
+
+		int result = JOptionPane.showOptionDialog(null, selectionPanel, "Car Selection", JOptionPane.OK_CANCEL_OPTION,
+				JOptionPane.QUESTION_MESSAGE, null, null, null);
+
+		if (result == JOptionPane.OK_OPTION)
+		{
+			if (greenOption.isSelected())
+			{
+				textureSelection = "CarTexture.png";
+			} else if (blueOption.isSelected())
+			{
+				textureSelection = "CarTextureBlue.png";
+			} else if (redOption.isSelected())
+			{
+				textureSelection = "CarTextureRed.png";
+			} else if (whiteOption.isSelected())
+			{
+				textureSelection = "CarTextureWhite.png";
+			}
+		}
+
+		if (textureSelection.length() == 0)
+		{
+			Log.print("No selection. Choosing default.\n");
+			textureSelection = "CarTexture.png";
+		}
+
+		Log.trace("Selection: %s\n", textureSelection);
+	}
+
 	@Override
 	public void loadShapes()
 	{
-		ghostShape = new Sphere();
+		ghostShape = new ImportedModel("box_car.obj");
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
 		trafficConeShape = new ImportedModel("trafficCone.obj");
 		terrainShape = new TerrainPlane(100);
@@ -182,15 +263,26 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		dolphinTex = new TextureImage("Dolphin_HighPolyUV.png");
 		trafficConeTex = new TextureImage("traffic_cone.png");
-		ghostTex = new TextureImage("redDolphin.jpg");
+		ghostTex = new TextureImage("CarTexture.png");
 		terrainTex = new TextureImage("tileable_grass_01.png");
+		// terrainTex = new TextureImage("HMT.jpg");
 		terrainHeightMap = new TextureImage("terrain1.jpg");
+
+		// Used for testing, unless wanted can be deleted
 		terrainHeightMap1 = new TextureImage("terrain1_1.jpg");
 		terrainHeightMap2 = new TextureImage("terrain1_2.jpg");
 		terrainHeightMap3 = new TextureImage("terrain1_3.jpg");
 		terrainHeightMap4 = new TextureImage("terrain1_4.jpg");
+		
 		boxCarTex = new TextureImage("CarTexture.png");
 		myRoadTex = new TextureImage("road1.jpg");
+		// terrainHeightMap = new TextureImage("HM1.jpg");
+		greenAvatarTex = new TextureImage("CarTexture.png");
+		blueAvatarTex = new TextureImage("CarTextureBlue.png");
+		redAvatarTex = new TextureImage("CarTextureRed.png");
+		whiteAvatarTex = new TextureImage("CarTextureWhite.png");
+
+		avatarTex = getAvatarTex(textureSelection);
 	}
 
 	@Override
@@ -204,18 +296,20 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void buildObjects()
 	{
-		terrain = new GameObject(GameObject.root(), terrainShape);
-		terrain.getRenderStates().setWireframe(true);
-
+		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
 		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
+		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -5, 0));
+		terrain.getRenderStates().setWireframe(true);
 		terrain.setHeightMap(terrainHeightMap);
-		terrain.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
 
-		avatar = new GameObject(GameObject.root(), boxCarShape, boxCarTex);
-		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 8f, 0.0f));
-		avatar.getRenderStates().setWireframe(true);
+		float heightOffGround = -boxCarShape.getLowestVertexY();
+		avatar = new GameObject(GameObject.root(), boxCarShape, avatarTex);
+		// avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 8f, 0.0f));
+		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
+		// avatar.getRenderStates().setWireframe(true);
+
 
 		backRW = new GameObject(avatar, backRWShape, boxCarTex);
 		backLW = new GameObject(avatar, backLWShape, boxCarTex);
@@ -284,12 +378,15 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void initializeGame()
 	{
-		setupNetworking();
-
 		prevTime = System.currentTimeMillis();
 		startTime = System.currentTimeMillis();
 		engine.getRenderSystem().setWindowDimensions(1900, 1000);
 		engine.getRenderSystem().setLocationRelativeTo(null);
+		mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
+
+		setupNetworking();
+
+		setupSounds();
 
 		// ----------------- initialize camera ----------------
 		// positionCameraBehindAvatar();
@@ -369,6 +466,7 @@ public class MyGame extends VariableFrameRateGame {
 		terrainP.setFriction(1.0f);
 		terrain.setPhysicsObject(terrainP);
 
+		// initMouseMode();
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
 		AccelAction accelAction = new AccelAction(this, vehicle, protocolClient);
@@ -376,7 +474,6 @@ public class MyGame extends VariableFrameRateGame {
 		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
-		TempRotateWheel tempRotateWheels = new TempRotateWheel(this);
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
@@ -389,7 +486,65 @@ public class MyGame extends VariableFrameRateGame {
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCamaraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		im.associateActionWithAllKeyboards(Identifier.Key._3, tempRotateWheels, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+	}
+
+	@Override
+	public void shutdown()
+	{
+		super.shutdown();
+
+		engineSound.release(audioMgr);
+		bgSound.release(audioMgr);
+		engineResource.unload();
+		bgMusicResource.unload();
+		audioMgr.shutdown();
+
+		sendByeMessage();
+	}
+
+	private void setupSounds()
+	{
+		audioMgr = AudioManagerFactory.createAudioManager("tage.audio.joal.JOALAudioManager");
+		if (!audioMgr.initialize())
+		{
+			System.out.println("Audio Manager failed to initialize");
+			return;
+		}
+
+		bgMusicResource = audioMgr.createAudioResource("assets/sounds/Lobo Loco - Fietschie Quietschie (ID 1927).wav", AudioResourceType.AUDIO_STREAM);
+		bgSound = new Sound(bgMusicResource, SoundType.SOUND_MUSIC, 100, true);
+		bgSound.initialize(audioMgr);
+		bgSound.setRollOff(0.0f);
+		bgSound.play(40, true);
+		
+		engineResource = audioMgr.createAudioResource("assets/sounds/engine-6000.wav", AudioResourceType.AUDIO_SAMPLE);
+		engineSound = new Sound(engineResource, SoundType.SOUND_EFFECT, 100, true);
+		engineSound.initialize(audioMgr);
+		engineSound.setMaxDistance(50.0f);
+		engineSound.setMinDistance(3.0f);
+		engineSound.setRollOff(2.0f);
+		engineSound.setLocation(getPlayerPosition());
+		engineSound.play(80, true);
+
+		updateEar();
+	}
+
+	public TextureImage getAvatarTex(String selection)
+	{
+		if (greenAvatarTex.getTextureFile().contains(selection))
+		{
+			return greenAvatarTex;
+		} else if (redAvatarTex.getTextureFile().contains(selection))
+		{
+			return redAvatarTex;
+		} else if (blueAvatarTex.getTextureFile().contains(selection))
+		{
+			return blueAvatarTex;
+		} else 
+		{
+			return whiteAvatarTex;
+		}
+
 	}
 
 	public GameObject getAvatar()
@@ -448,12 +603,6 @@ public class MyGame extends VariableFrameRateGame {
 		String speedString = String.format("Speed: %.2f", speed);
 		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
 
-		// My code start -- update avatar to move up with terrain
-		// update altitude of dolphin based on height map
-		// Vector3f loc = avatar.getWorldLocation();
-		// float height = terr.getHeight(loc.x(), loc.z());
-		// avatar.setLocalLocation(new Vector3f(loc.x(), height, loc.z()));
-
 		// update inputs and camera
 		// stoppingForce(elapsed);
 		// applyGravity(elapsed);
@@ -464,11 +613,10 @@ public class MyGame extends VariableFrameRateGame {
 
 		if (updateScriptInRuntime)
 		{
-			passes++;
-
-			if (passes > 30)
+			if (++passes > 30)
 			{
 				updateScripts();
+				passes = 0;
 			}
 		}
 
@@ -477,34 +625,29 @@ public class MyGame extends VariableFrameRateGame {
 		} else {
 			orbitController.updateCameraPosition();
 		}
+		updateSounds();
 	}
 
 	public void toggleCamara(){
 		toggleCamaraType = !toggleCamaraType;
 	}
 
-	public void toggleRotation(){
-		rotatingWheels = !rotatingWheels;
+	private void updateSounds()
+	{
+		updateEar();
+		engineSound.setLocation(getPlayerPosition());
+		engineSound.setPitch((float) (1 + (speed / maxSpeed) * 1.2));
+
+		// bgSound.setLocation(mainCamera.getLocation());
 	}
 
-	private void positionCameraBehindAvatar()
+	private void updateEar()
 	{
-		Vector4f u = new Vector4f(-1f, 0f, 0f, 1f);
-		Vector4f v = new Vector4f(0f, 1f, 0f, 1f);
-		Vector4f n = new Vector4f(0f, 0f, 1f, 1f);
-		u.mul(avatar.getWorldRotation());
-		v.mul(avatar.getWorldRotation());
-		n.mul(avatar.getWorldRotation());
-		Matrix4f w = avatar.getWorldTranslation();
-		Vector3f position = new Vector3f(w.m30(), w.m31(), w.m32());
-		position.add(-n.x() * 2f, -n.y() * 2f, -n.z() * 2f);
-		position.add(v.x() * .75f, v.y() * .75f, v.z() * .75f);
-		Camera c = (engine.getRenderSystem()).getViewport("MAIN").getCamera();
-		c.setLocation(position);
-		c.setU(new Vector3f(u.x(), u.y(), u.z()));
-		c.setV(new Vector3f(v.x(), v.y(), v.z()));
-		c.setN(new Vector3f(n.x(), n.y(), n.z()));
+		audioMgr.getEar().setLocation(mainCamera.getLocation());
+		audioMgr.getEar().setOrientation(mainCamera.getN(), mainCamera.getV());
 	}
+
+	// --------- Movement Section --------
 
 	public double getSpeed()
 	{
@@ -534,6 +677,8 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			speed = maxSpeed;
 		}
+
+		// gasApplied = true;
 	}
 
 	public void decelerate(float time)
@@ -549,6 +694,8 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			speed = 0;
 		}
+
+		// brakeApplied = true;
 	}
 
 	private void stoppingForce(float time)
@@ -569,31 +716,30 @@ public class MyGame extends VariableFrameRateGame {
 		pos.y += avatar.getShape().getLowestVertexY() * 0.25f;
 		float floor = terrain.getHeight(pos.x, pos.z);
 
-		if (floor < 0)
-		{
-			floor = 0;
-		}
-
 		if (pos.y > floor)
 		{
 			isFalling = true;
 			gravitySpeed += time * gravity;
 			pos.y -= gravitySpeed;
-			if (pos.y < floor)
+
+			if (pos.y <= floor)
 			{
 				pos.y = floor;
 				isFalling = false;
+				gravitySpeed = 0;
+				pos.y = floor;
 			}
-		} else
-		{
-			isFalling = false;
-			gravitySpeed = 0;
-			pos.y = floor;
+
+			pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
+			avatar.setLocalLocation(pos);
 		}
 
-		// Reset position back to normal
-		pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
-		avatar.setLocalLocation(pos);
+		else if (pos.y < floor)
+		{
+			pos.y = floor - avatar.getShape().getLowestVertexY() * 0.25f;
+			avatar.setLocalLocation(pos);
+			isFalling = false;
+		}
 	}
 
 	private void updatePosition()
@@ -604,7 +750,7 @@ public class MyGame extends VariableFrameRateGame {
 		fwdDirection.mul((float) (speed * 0.1));
 		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
 		avatar.setLocalLocation(newPosition);
-		protocolClient.sendMoveMessage(newPosition);
+		protocolClient.sendMoveMessage(newPosition, avatar.getLocalRotation());
 	}
 
 	private void checkForCollisions() {
@@ -747,7 +893,7 @@ public class MyGame extends VariableFrameRateGame {
 	 */
 	private void updateScripts()
 	{
-		Log.trace("Updating script");
+		Log.trace("Updating script\n");
 		runScript(scriptFile);
 		maxSpeed = (Integer) jsEngine.get("maxSpeed");
 		acceleration = (Double) jsEngine.get("acceleration");
@@ -822,9 +968,27 @@ public class MyGame extends VariableFrameRateGame {
 		return avatar.getWorldLocation();
 	}
 
+	public Matrix4f getPlayerRotation()
+	{
+		return avatar.getLocalRotation();
+	}
+
+	public String getAvatarSelection()
+	{
+		return textureSelection;
+	}
+
 	public void setIsConnected(boolean value)
 	{
 		this.isClientConnected = value;
+	}
+
+	public void sendByeMessage()
+	{
+		if (protocolClient != null && isClientConnected == true)
+		{
+			protocolClient.sendByeMessage();
+		}
 	}
 
 	private class SendCloseConnectionPacketAction extends AbstractInputAction {
@@ -852,58 +1016,43 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
-	private class TempRotateWheel extends AbstractInputAction {
-		MyGame myGame;
-
-		TempRotateWheel(MyGame myGame){
-			this.myGame = myGame;
-		}
-
-		@Override
-		public void performAction(float time, net.java.games.input.Event evt)
-		{
-			myGame.toggleRotation();
-		}
+	// ------------------ UTILITY FUNCTIONS used by physics
+	public static javax.vecmath.Vector3f toJavaxVecmath(Vector3f jomlVec) {
+		return new javax.vecmath.Vector3f(jomlVec.x, jomlVec.y, jomlVec.z);
 	}
 
+	private float[] toFloatArray(double[] arr) {
+		if (arr == null) {
+			return null;
+		}
+		int n = arr.length;
+		float[] ret = new float[n];
+		for (int i = 0; i < n; i++) {
+			ret[i] = (float)arr[i];
+		}
+		return ret;
+	}
 
-// ------------------ UTILITY FUNCTIONS used by physics
-public static javax.vecmath.Vector3f toJavaxVecmath(Vector3f jomlVec) {
-    return new javax.vecmath.Vector3f(jomlVec.x, jomlVec.y, jomlVec.z);
-}
+	private double[] toDoubleArray(float[] arr) {
+		if (arr == null) {
+			return null;
+		}
+		int n = arr.length;
+		double[] ret = new double[n];
+		for (int i = 0; i < n; i++) {
+			ret[i] = (double)arr[i];
+		}
+		return ret;
+	}
 
-private float[] toFloatArray(double[] arr) {
-    if (arr == null) {
-        return null;
-    }
-    int n = arr.length;
-    float[] ret = new float[n];
-    for (int i = 0; i < n; i++) {
-        ret[i] = (float)arr[i];
-    }
-    return ret;
-}
-
-private double[] toDoubleArray(float[] arr) {
-    if (arr == null) {
-        return null;
-    }
-    int n = arr.length;
-    double[] ret = new double[n];
-    for (int i = 0; i < n; i++) {
-        ret[i] = (double)arr[i];
-    }
-    return ret;
-}
-
-javax.vecmath.Matrix4f convertJomlToJavax(Matrix4f m) {
-	javax.vecmath.Matrix4f convert = new javax.vecmath.Matrix4f();
-	
-	convert.m00 = m.m00(); convert.m01 = m.m01(); convert.m02 = m.m02(); convert.m03 = m.m03();
-	convert.m10 = m.m10(); convert.m11 = m.m11(); convert.m12 = m.m12(); convert.m13 = m.m13();
-	convert.m20 = m.m20(); convert.m21 = m.m21(); convert.m22 = m.m22(); convert.m23 = m.m23();
-	convert.m30 = m.m30(); convert.m31 = m.m31(); convert.m32 = m.m32(); convert.m33 = m.m33();
-	
-	return convert;
-}
+	javax.vecmath.Matrix4f convertJomlToJavax(Matrix4f m) {
+		javax.vecmath.Matrix4f convert = new javax.vecmath.Matrix4f();
+		
+		convert.m00 = m.m00(); convert.m01 = m.m01(); convert.m02 = m.m02(); convert.m03 = m.m03();
+		convert.m10 = m.m10(); convert.m11 = m.m11(); convert.m12 = m.m12(); convert.m13 = m.m13();
+		convert.m20 = m.m20(); convert.m21 = m.m21(); convert.m22 = m.m22(); convert.m23 = m.m23();
+		convert.m30 = m.m30(); convert.m31 = m.m31(); convert.m32 = m.m32(); convert.m33 = m.m33();
+		
+		return convert;
+	}
 }

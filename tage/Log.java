@@ -17,15 +17,26 @@ public class Log {
 		if (level != logLevel)
 		{
 			level = logLevel;
-			System.out.printf("Log level set to %d\n", level);
+			printf("Log level set to %d\n", level);
 		}
-	}	
+	}
+
+	/**
+	 * Log with printf. This will always output.
+	 * 
+	 * @param s    Formatted string
+	 * @param args Input for the formatted string
+	 */
+	public static void print(String s, Object... args)
+	{
+		printf(s, args);
+	}
 
 	public static void debug(String s, Object... args)
 	{
 		if (level >= 1)
 		{
-			System.out.printf(s, args);
+			printf(s, args);
 		}
 	}
 
@@ -33,7 +44,7 @@ public class Log {
 	{
 		if (level >= 2)
 		{
-			System.out.printf(s, args);
+			printf(s, args);
 		}
 	}
 
@@ -41,8 +52,18 @@ public class Log {
 	{
 		if (level >= 3)
 		{
-			System.out.printf(s, args);
+			printf(s, args);
 		}
 	}
 
+	private static void printf(String s, Object... args)
+	{
+		try
+		{
+			System.out.printf(s, args);
+		} catch (Exception e)
+		{
+			e.printStackTrace();
+		}
+	}
 }
