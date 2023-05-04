@@ -15,6 +15,21 @@ import com.bulletphysics.collision.dispatch.CollisionDispatcher;
 import com.bulletphysics.collision.dispatch.DefaultCollisionConfiguration;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.constraintsolver.SequentialImpulseConstraintSolver;
+import com.bulletphysics.dynamics.vehicle.DefaultVehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
+import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
+import com.bulletphysics.dynamics.vehicle.VehicleTuning;
+
+// For debug purposes
+import com.bulletphysics.dynamics.RigidBody;
+import com.bulletphysics.linearmath.Transform;
+import com.bulletphysics.collision.dispatch.CollisionObject;
+import com.bulletphysics.collision.shapes.BoxShape;
+import com.bulletphysics.collision.shapes.CollisionShape;
+import com.bulletphysics.dynamics.RigidBodyConstructionInfo;
+import com.bulletphysics.linearmath.DefaultMotionState;
+import com.bulletphysics.collision.shapes.CompoundShape;
+import org.joml.Matrix4f;
 
 /**
  * This class provides an implementation of the PhysicsEngine interface using the JBullet physics engine.
@@ -29,6 +44,9 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		private static final int MAX_PHYSICS_OBJECTS = 1024;
 		private static int nextUID;
 
+		private VehicleRaycaster vehicleRaycaster;
+		private RaycastVehicle vehicle;
+		private VehicleTuning myVehicleTuning;
 		private DefaultCollisionConfiguration collisionConfiguration;
 		private CollisionDispatcher dispatcher;
 		private SequentialImpulseConstraintSolver solver;
@@ -77,6 +95,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 
 			dynamicsWorld = new DiscreteDynamicsWorld(dispatcher, overlappingPairCache, solver,
 					collisionConfiguration);
+
 			// dynamicsWorld = new SimpleDynamicsWorld(dispatcher, overlappingPairCache, solver,
 			// collisionConfiguration);
 
@@ -271,6 +290,49 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			return cylinderObject;
 		}
 
+		public PhysicsObject addVehicleObject(int uid, float mass, double[] xform, float[] size){
+			
+			JBulletVehicleObject vehicleObject = new JBulletVehicleObject(uid, mass, xform, size, this.dynamicsWorld);
+			
+			this.dynamicsWorld.addRigidBody(vehicleObject.getRigidBody());
+			this.objects.add(vehicleObject);
+
+		    vehicleRaycaster = new DefaultVehicleRaycaster(this.dynamicsWorld);
+
+			myVehicleTuning = new VehicleTuning();
+			vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody() , vehicleRaycaster);
+			vehicle.setCoordinateSystem(0, 1, 2);
+	
+			//Disable Deactivation
+			vehicle.getRigidBody().setActivationState(CollisionObject.DISABLE_DEACTIVATION);
+			
+			dynamicsWorld.addVehicle(vehicle);
+
+			if (this.vehicle == null) {
+				System.out.println();
+				System.out.println();
+				System.out.println("Vehicle object is null!");
+				System.out.println();
+				System.out.println();
+
+			}else {
+				System.out.println();
+				System.out.println();
+				System.out.println("Vehicle set!");
+				System.out.println();
+				System.out.println();
+			}
+			return vehicleObject;
+		}
+
+		public RaycastVehicle getVehicle(){
+			return vehicle;
+		}
+
+		public VehicleTuning getVehicleTuning(){
+			return myVehicleTuning;
+		}
+
 		public PhysicsObject addStaticPlaneObject(int uid, double[] transform, float[] up_vector,
 				float plane_constant) {
 			JBulletStaticPlaneObject planeObject = new JBulletStaticPlaneObject(uid, transform,
@@ -324,6 +386,13 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			return hingeConstraint;
 		}
 
+		// @Override
+		// public PhysicsHingeConstraint addHingeConstraint(int uid, PhysicsObject bodyA, PhysicsObject bodyB, float axisX, float axisY, float axisZ, Vector3f pivotOffsetA, Vector3f pivotOffsetB) {
+		// 	JBulletHingeConstraint hingeConstraint = new JBulletHingeConstraint(uid, (JBulletPhysicsObject) bodyA, (JBulletPhysicsObject) bodyB, axisX, axisY, axisZ, pivotOffsetA, pivotOffsetB);
+		// 	dynamicsWorld.addConstraint(hingeConstraint.getConstraint());
+		// 	return hingeConstraint;
+		// }
+
 		@Override
 		public PhysicsBallSocketConstraint addBallSocketConstraint(int uid, PhysicsObject bodyA, PhysicsObject bodyB) {
 			JBulletBallSocketConstraint ballSocketConstraint = new JBulletBallSocketConstraint(uid, (JBulletPhysicsObject)bodyA, (JBulletPhysicsObject)bodyB);
@@ -331,6 +400,38 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			return ballSocketConstraint;
 		}
 	
-	public DiscreteDynamicsWorld getDynamicsWorld() { return dynamicsWorld; }
-
+		@Override
+		public DiscreteDynamicsWorld getDynamicsWorld() { return dynamicsWorld; }
 }
+
+	/* // Start of BoxShape Debug Code
+	// Create the first cube
+	float halfExtent = 0.1f;
+	Vector3f position1 = new Vector3f(0.1f, 0.1f, 0.1f);
+	CollisionShape cubeShape1 = new BoxShape(new Vector3f(halfExtent, halfExtent, halfExtent));
+	Matrix4f transformMatrix1 = new Matrix4f().translate(0.0f, 5f, 0.0f);
+	Transform transform1 = new Transform(convertJomlToJavax(transformMatrix1));
+	transform1.setIdentity();
+	transform1.origin.set(position1);
+
+	DefaultMotionState motionState1 = new DefaultMotionState(transform1);
+	RigidBodyConstructionInfo rigidBodyCI1 = new RigidBodyConstructionInfo(0, motionState1, cubeShape1, new Vector3f(0, 0, 0));
+	RigidBody cube1 = new RigidBody(rigidBodyCI1);
+
+	// Create the second cube
+	Vector3f position2 = new Vector3f(0.1f, 0.1f, 0.1f);
+	CollisionShape cubeShape2 = new BoxShape(new Vector3f(halfExtent, halfExtent, halfExtent));
+	Transform transform2 = new Transform();
+	transform2.setIdentity();
+	transform2.origin.set(position2);
+	transform2.origin.add(new javax.vecmath.TexCoord3f(0, 1, 0));
+
+	DefaultMotionState motionState2 = new DefaultMotionState(transform2);
+	RigidBodyConstructionInfo rigidBodyCI2 = new RigidBodyConstructionInfo(0, motionState2, cubeShape2, new Vector3f(0, 0, 0));
+	RigidBody cube2 = new RigidBody(rigidBodyCI2);
+
+	// Add the cubes to the dynamics world
+	dynamicsWorld.addRigidBody(cube1);
+	dynamicsWorld.addRigidBody(cube2);
+
+	// End of BoxShape Debug Code */

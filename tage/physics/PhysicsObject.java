@@ -107,6 +107,13 @@ public interface PhysicsObject {
 	public boolean isDynamic();
 
 	/**
+	Returns a flag indicating whether this {@code IPhysicsObject} is a vehicle or not.
+	A vehicle is a special type of physics object that can be driven and controlled by a player.
+	@return {@code true} if this object is a vehicle, {@code false} otherwise.
+	*/
+	public boolean isVehicle();
+
+	/**
 	 * Sets the sleep threshold for this physics object. The sleep threshold
 	 * determines at what velocity an object is determined to have come to rest
 	 * and thus is no longer updated by the physics engine until another object

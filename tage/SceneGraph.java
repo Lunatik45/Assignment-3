@@ -3,6 +3,7 @@ import java.util.*;
 import tage.shapes.*;
 import tage.nodeControllers.*;
 import org.joml.*;
+import tage.physics.PhysicsObject;
 
 /**
 * Tools for building a scene graph tree, and building and applying the associated node controllers.
@@ -45,6 +46,7 @@ public class SceneGraph
 	private NodeController nc, nci;
 	private GameObject skybox;
 	private boolean skyboxEnabled = false;
+	private boolean physicsDebugEnabled = false;
 	private int activeSkyBoxTexture;
 
 	protected SceneGraph(Engine e)
@@ -111,6 +113,12 @@ public class SceneGraph
 	/** sets whether or not to render a skybox */
 	public void setSkyBoxEnabled(boolean sbe) { skyboxEnabled = sbe; }
 
+	/** returns a boolean that is true if physics debugmode rendering has been enabled */
+	public boolean isPhysicsDebugEnabled() { return physicsDebugEnabled; }
+
+	/** sets whether or not to render physics objects */
+	public void setPhysicsDebugEnabled(boolean pyse) { physicsDebugEnabled = pyse; }
+	
 	/** specifies which loaded skybox should be rendered */
 	public void setActiveSkyBoxTexture(int tex) { activeSkyBoxTexture = tex; }
 
