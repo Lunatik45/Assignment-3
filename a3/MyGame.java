@@ -598,6 +598,7 @@ public class MyGame extends VariableFrameRateGame {
 		super.shutdown();
 
 		ghostManager.shutdown();
+		npcManager.shutdown();
 
 		engineSound.release(audioMgr);
 		bgSound.release(audioMgr);
@@ -666,7 +667,7 @@ public class MyGame extends VariableFrameRateGame {
 		// stoppingForce(elapsed);
 		// applyGravity(elapsed);
 		im.update(elapsed);
-		updatePosition();
+		// updatePosition();
 		updateNpc(elapsed);
 		// positionCameraBehindAvatar();
 		// updatePosition();
@@ -718,11 +719,6 @@ public class MyGame extends VariableFrameRateGame {
 		engineSound.play(80, true);
 
 		updateEar();
-	}
-
-	public void toggleCamara()
-	{
-		toggleCamaraType = !toggleCamaraType;
 	}
 
 	private void updateSounds()
@@ -965,6 +961,11 @@ public class MyGame extends VariableFrameRateGame {
 	}
 
 	// ---------- MOUSE CAMERA SECTION ------------
+
+	public void toggleCamara()
+	{
+		toggleCamaraType = !toggleCamaraType;
+	}
 
 	/**
 	 * Initializes the mouse input as a camera controller.
@@ -1269,6 +1270,8 @@ public class MyGame extends VariableFrameRateGame {
 
 		return targets;
 	}
+
+	// ------------------ INPUT HANDLING ------------------------
 
 	private class ToggleCamaraType extends AbstractInputAction {
 		MyGame myGame;

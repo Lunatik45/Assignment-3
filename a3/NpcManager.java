@@ -5,7 +5,7 @@ import java.io.IOException;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-// import tage.Log;
+import tage.Log;
 import tage.ObjShape;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
@@ -28,19 +28,26 @@ public class NpcManager {
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		npc.setLocalScale(initialScale);
 		npc.lookAt(lookat);
+		Log.trace("NPC created\n");
 	}
-	
+
 	public void shutdown()
 	{
-		npc.stopSounds();
+		if (npc != null)
+		{
+			npc.stopSounds();
+		}
 	}
 
 	public void updateNpcStatus(boolean wantsAccel, boolean wantsDecel, boolean wantsTurnLeft, boolean wantsTurnRight)
 	{
-		npc.wantsAccel = wantsAccel;
-		npc.wantsDecel = wantsDecel;
-		npc.wantsTurnLeft = wantsTurnLeft;
-		npc.wantsTurnRight = wantsTurnRight;
+		if (npc != null)
+		{
+			npc.wantsAccel = wantsAccel;
+			npc.wantsDecel = wantsDecel;
+			npc.wantsTurnLeft = wantsTurnLeft;
+			npc.wantsTurnRight = wantsTurnRight;
+		}
 	}
 
 	public NpcAvatar getNpc()
@@ -50,8 +57,11 @@ public class NpcManager {
 
 	public void updateNpcAvatar(Vector3f position, Vector3f lookat)
 	{
-		npc.setPosition(position);
-		npc.lookAt(lookat);
+		if (npc != null)
+		{
+			npc.setPosition(position);
+			npc.lookAt(lookat);
+		}
 	}
 
 
