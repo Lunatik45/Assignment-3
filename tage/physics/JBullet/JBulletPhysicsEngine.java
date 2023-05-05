@@ -292,7 +292,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 
 		public PhysicsObject addVehicleObject(int uid, float mass, double[] xform, float[] size){
 			
-			JBulletVehicleObject vehicleObject = new JBulletVehicleObject(uid, mass, xform, size, this.dynamicsWorld);
+			JBulletVehicleObject vehicleObject = new JBulletVehicleObject(uid, mass, xform, size);
 			
 			this.dynamicsWorld.addRigidBody(vehicleObject.getRigidBody());
 			this.objects.add(vehicleObject);
@@ -300,6 +300,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		    vehicleRaycaster = new DefaultVehicleRaycaster(this.dynamicsWorld);
 
 			myVehicleTuning = new VehicleTuning();
+
 			vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody() , vehicleRaycaster);
 			vehicle.setCoordinateSystem(0, 1, 2);
 	
@@ -308,20 +309,6 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			
 			dynamicsWorld.addVehicle(vehicle);
 
-			if (this.vehicle == null) {
-				System.out.println();
-				System.out.println();
-				System.out.println("Vehicle object is null!");
-				System.out.println();
-				System.out.println();
-
-			}else {
-				System.out.println();
-				System.out.println();
-				System.out.println("Vehicle set!");
-				System.out.println();
-				System.out.println();
-			}
 			return vehicleObject;
 		}
 

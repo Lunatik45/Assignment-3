@@ -134,7 +134,7 @@ public class MyGame extends VariableFrameRateGame {
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP;
 	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
-	private Boolean toggleCamaraType = true; // Spring camera is currently broken but orbit camera works fine
+	private Boolean toggleCamaraType = false;
 	private Boolean mouseIsRecentering = false;
 	private String textureSelection = "";
 
@@ -329,8 +329,8 @@ public class MyGame extends VariableFrameRateGame {
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
 		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
-		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -5, 0));
-		terrain.getRenderStates().setWireframe(true);
+		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -1, 0));
+		// terrain.getRenderStates().setWireframe(true);
 		terrain.setHeightMap(terrainHeightMap);
 
 		float heightOffGround = -boxCarShape.getLowestVertexY();
@@ -502,8 +502,8 @@ public class MyGame extends VariableFrameRateGame {
 
 		// --- create physics world ---
 
-		float chassisMass = 800.0f;
-		float up[] = { 0, 1, 0 };
+		float chassisMass = 1500.0f;
+		float up[] = {0,1,0};
 		double[] tempTransform;
 		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
@@ -566,8 +566,10 @@ public class MyGame extends VariableFrameRateGame {
 
 		translation = new Matrix4f(terrain.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
-		terrainP.setFriction(1.0f);
+		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
+		// terrainP.setFriction(1.0f);
+		float [] test = {1000f, 0.75f , 1000f};
+		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, test);
 		terrain.setPhysicsObject(terrainP);
 
 		// initMouseMode();
