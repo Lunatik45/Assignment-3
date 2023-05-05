@@ -352,7 +352,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		 */
 		public void update(float nanoseconds) {
 			if (dynamicsWorld != null) {
-				dynamicsWorld.stepSimulation(nanoseconds/1200f);//, 4, 1f/60f);
+				dynamicsWorld.stepSimulation(nanoseconds/1000f);//, 4, 1f/60f);
 			}
 		}
 

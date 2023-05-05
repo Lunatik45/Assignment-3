@@ -124,7 +124,7 @@ public class MyGame extends VariableFrameRateGame {
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP;
 	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
-	private Boolean toggleCamaraType = true; // Spring camera is currently broken but orbit camera works fine
+	private Boolean toggleCamaraType = false;
 	private Boolean mouseIsRecentering = false;
 	private String textureSelection = "";
 
@@ -300,7 +300,7 @@ public class MyGame extends VariableFrameRateGame {
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
 		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
-		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -5, 0));
+		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -1, 0));
 		// terrain.getRenderStates().setWireframe(true);
 		terrain.setHeightMap(terrainHeightMap);
 

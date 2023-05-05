@@ -36,7 +36,7 @@ public class DecelAction extends AbstractInputAction {
 		// fwdDirection.z());
 		// av.setLocalLocation(newPosition);
 		// protClient.sendMoveMessage(av.getWorldLocation());
-		System.out.println("Decelerating");
+		// System.out.println("Decelerating");
 		this.vehicle.applyEngineForce(0, 2);
 		this.vehicle.applyEngineForce(0, 3);
 		this.vehicle.setBrake(100, 2);
