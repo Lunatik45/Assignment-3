@@ -20,13 +20,14 @@ public class NpcManager {
 		game = (MyGame) vfrg;
 	}
 
-	public void createGhostAvatar(Vector3f position, Vector3f lookat) throws IOException
+	public void createNpcAvatar(Vector3f position, Vector3f lookat) throws IOException
 	{
 		ObjShape s = game.getGhostShape();
 		TextureImage t = game.getAvatarTex("CarTextureWhite.png");
 		npc = new NpcAvatar(s, t, position, game.getNewEngineSound(), game.getAudioManager());
+		npc.setPhysicsObject(game.getNpcPhysicsObject());
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
-		npc.setLocalScale(initialScale);
+		// npc.setLocalScale(initialScale);
 		npc.lookAt(lookat);
 		Log.trace("NPC created\n");
 	}

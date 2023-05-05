@@ -10,8 +10,8 @@ public class NPC {
 
 	public NPC()
 	{
-		position = new Vector3f(0, 0, 0);
-		lookat = new Vector3f(0, 0, -1);
+		position = new Vector3f(5, 0, -5);
+		lookat = new Vector3f(position).add(0, 0, -1);
 		resetDriveStatus();
 	}
 

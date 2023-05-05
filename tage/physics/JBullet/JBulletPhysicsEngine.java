@@ -1,5 +1,6 @@
 package tage.physics.JBullet;
 
+import java.util.HashMap;
 import java.util.Vector;
 
 import javax.vecmath.Vector3f;
@@ -44,9 +45,11 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		private static final int MAX_PHYSICS_OBJECTS = 1024;
 		private static int nextUID;
 
-		private VehicleRaycaster vehicleRaycaster;
-		private RaycastVehicle vehicle;
-		private VehicleTuning myVehicleTuning;
+		// private VehicleRaycaster vehicleRaycaster;
+		// private RaycastVehicle vehicle;
+		private HashMap<Integer, RaycastVehicle> vehicles;
+		private HashMap<Integer, VehicleTuning> vehicleTunings;
+		// private VehicleTuning myVehicleTuning;
 		private DefaultCollisionConfiguration collisionConfiguration;
 		private CollisionDispatcher dispatcher;
 		private SequentialImpulseConstraintSolver solver;
@@ -105,6 +108,9 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			setGravity(gravity_vector);
 
 			objects = new Vector<PhysicsObject>(50, 25);
+
+			vehicles = new HashMap<>();
+			vehicleTunings = new HashMap<>();
 		}
 		
 		/*
@@ -297,27 +303,29 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			this.dynamicsWorld.addRigidBody(vehicleObject.getRigidBody());
 			this.objects.add(vehicleObject);
 
-		    vehicleRaycaster = new DefaultVehicleRaycaster(this.dynamicsWorld);
+		    VehicleRaycaster vehicleRaycaster = new DefaultVehicleRaycaster(this.dynamicsWorld);
 
-			myVehicleTuning = new VehicleTuning();
+			VehicleTuning myVehicleTuning = new VehicleTuning();
 
-			vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody() , vehicleRaycaster);
+			RaycastVehicle vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody() , vehicleRaycaster);
 			vehicle.setCoordinateSystem(0, 1, 2);
 	
 			//Disable Deactivation
 			vehicle.getRigidBody().setActivationState(CollisionObject.DISABLE_DEACTIVATION);
 			
 			dynamicsWorld.addVehicle(vehicle);
+			vehicles.put(uid, vehicle);
+			vehicleTunings.put(uid, myVehicleTuning);
 
 			return vehicleObject;
 		}
 
-		public RaycastVehicle getVehicle(){
-			return vehicle;
+		public RaycastVehicle getVehicle(int uid){
+			return vehicles.get(uid);
 		}
 
-		public VehicleTuning getVehicleTuning(){
-			return myVehicleTuning;
+		public VehicleTuning getVehicleTuning(int uid){
+			return vehicleTunings.get(uid);
 		}
 
 		public PhysicsObject addStaticPlaneObject(int uid, double[] transform, float[] up_vector,

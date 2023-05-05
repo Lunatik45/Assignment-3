@@ -118,6 +118,7 @@ public class MyGame extends VariableFrameRateGame {
 			building3Tex, building4Tex, trafficTex;
 	private TextureImage terrainHeightMap1, terrainHeightMap2, terrainHeightMap3, terrainHeightMap4;
 	private NpcManager npcManager;
+	private RaycastVehicle vehicle, npcVehicle;
 
 	private boolean isClientConnected = false, isNpcHandler = false;
 
@@ -132,7 +133,7 @@ public class MyGame extends VariableFrameRateGame {
 	private int passes = 0;
 	private int serverPort;
 	private PhysicsEngine physicsEngine;
-	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP;
+	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP;
 	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
 	private Boolean toggleCamaraType = false;
 	private Boolean mouseIsRecentering = false;
@@ -503,29 +504,26 @@ public class MyGame extends VariableFrameRateGame {
 		// --- create physics world ---
 
 		float chassisMass = 1500.0f;
-		float up[] = {0,1,0};
-		double[] tempTransform;
+		float up[] = { 0, 1, 0 };
+		double[] tempTransform, npcTransform;
 		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
+		translation = new Matrix4f().translation(5, 0, 5);
+		npcTransform = toDoubleArray(translation.get(vals));
 		// float[] chassisHalfExtens = {0.316f, 0.251f, 0.575f};
 		float[] chassisHalfExtens = { 1f, 0.5f, 2f };
 		avatarP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, tempTransform,
 				chassisHalfExtens);
+		npcP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, npcTransform, chassisHalfExtens);
 
 		avatar.setPhysicsObject(avatarP);
 
-		RaycastVehicle vehicle = physicsEngine.getVehicle();
-		VehicleTuning tuning = physicsEngine.getVehicleTuning();
+		vehicle = physicsEngine.getVehicle(avatarP.getUID());
+		VehicleTuning tuning = physicsEngine.getVehicleTuning(avatarP.getUID());
 
-		// float wheelMass = 25.0f;
 		float wheelRadius = 0.5f;
 		float connectionHeight = 1.2f;
 		float wheelWidth = 0.4f;
-
-		// float[] wheelHalfExtents = new float[]{0.3975f, 0.084625f, 0.0825f};
-		// float wheelRadius = (wheelHalfExtents[1] + wheelHalfExtents[2]) / 2.0f;
-		// float connectionHeight = wheelHalfExtents[2];
-		// float wheelWidth = 2.0f * wheelHalfExtents[0];
 
 		javax.vecmath.Vector3f wheelDirectionCS0 = new javax.vecmath.Vector3f(0, -1, 0);
 		javax.vecmath.Vector3f wheelAxleCS = new javax.vecmath.Vector3f(-1, 0, 0);
@@ -564,12 +562,43 @@ public class MyGame extends VariableFrameRateGame {
 			wheel.rollInfluence = 0.1f;
 		}
 
+		// Crude implimentation for NPC physics
+		npcVehicle = physicsEngine.getVehicle(npcP.getUID());
+		VehicleTuning npcTuning = physicsEngine.getVehicleTuning(npcP.getUID());
+		wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelRadius, connectionHeight,
+				chassisHalfExtens[2] - wheelWidth);
+		npcVehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+				wheelRadius, npcTuning, true);
+		wheelConnectionPoint = new Vector3f(-chassisHalfExtens[0] + wheelRadius, connectionHeight,
+				chassisHalfExtens[2] - wheelWidth);
+		npcVehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+				wheelRadius, npcTuning, true);
+		// Adds the rear wheels
+		wheelConnectionPoint = new Vector3f(-chassisHalfExtens[0] + wheelRadius, connectionHeight,
+				(-chassisHalfExtens[2]) + wheelWidth);
+		npcVehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+				wheelRadius, npcTuning, false);
+		wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelRadius, connectionHeight,
+				(-chassisHalfExtens[2]) + wheelWidth);
+		npcVehicle.addWheel(toJavaxVecmath(wheelConnectionPoint), wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+				wheelRadius, npcTuning, false);
+		for (int i = 0; i < 4; i++)
+		{
+			WheelInfo wheel = npcVehicle.getWheelInfo(i);
+			wheel.suspensionStiffness = 20f;
+			wheel.wheelsDampingCompression = 4.4f;
+			wheel.wheelsDampingRelaxation = 2.3f;
+			wheel.frictionSlip = 1000f;
+			wheel.rollInfluence = 0.1f;
+		}
+
+
 		translation = new Matrix4f(terrain.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
-		// terrainP.setFriction(1.0f);
-		float [] test = {1000f, 0.75f , 1000f};
+		float[] test = { 1000f, 0.75f, 1000f };
 		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, test);
+		// terrainP.setFriction(1.0f);
+		// terrainP.setBounciness(0.0f);
 		terrain.setPhysicsObject(terrainP);
 
 		// initMouseMode();
@@ -622,6 +651,10 @@ public class MyGame extends VariableFrameRateGame {
 		amt = elapsedTime * 0.03;
 		double amtt = totalTime * 0.001;
 
+		vehicle.setSteeringValue(vehicle.getSteeringValue(0) * 0.95f, 0);
+		vehicle.setSteeringValue(vehicle.getSteeringValue(1) * 0.95f, 1);
+		vehicle.setSteeringValue(vehicle.getSteeringValue(2) * 0.95f, 2);
+		vehicle.setSteeringValue(vehicle.getSteeringValue(3) * 0.95f, 3);
 
 		// Temp trigger to rotate back wheels
 		// if(rotatingWheels){
@@ -665,11 +698,14 @@ public class MyGame extends VariableFrameRateGame {
 		String speedString = String.format("Speed: %.2f", speed);
 		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
 
+		vehicle.applyEngineForce(0, 2);
+		vehicle.applyEngineForce(0, 3);
+
 		// update inputs and camera
 		// stoppingForce(elapsed);
 		// applyGravity(elapsed);
 		im.update(elapsed);
-		// updatePosition();
+		updatePosition();
 		updateNpc(elapsed);
 		// positionCameraBehindAvatar();
 		// updatePosition();
@@ -709,7 +745,7 @@ public class MyGame extends VariableFrameRateGame {
 		bgSound = new Sound(bgMusicResource, SoundType.SOUND_MUSIC, 100, true);
 		bgSound.initialize(audioMgr);
 		bgSound.setRollOff(0.0f);
-		bgSound.play(40, true);
+		// bgSound.play(40, true);
 
 		engineResource = audioMgr.createAudioResource("assets/sounds/engine-6000.wav", AudioResourceType.AUDIO_SAMPLE);
 		engineSound = new Sound(engineResource, SoundType.SOUND_EFFECT, 100, true);
@@ -718,7 +754,7 @@ public class MyGame extends VariableFrameRateGame {
 		engineSound.setMinDistance(3.0f);
 		engineSound.setRollOff(2.0f);
 		engineSound.setLocation(getPlayerPosition());
-		engineSound.play(80, true);
+		// engineSound.play(80, true);
 
 		updateEar();
 	}
@@ -756,64 +792,108 @@ public class MyGame extends VariableFrameRateGame {
 		}
 
 		NpcAvatar npc = npcManager.getNpc();
-		double npcSpeed = npc.speed;
+		PhysicsObject po = npc.getPhysicsObject();
+		RaycastVehicle v = physicsEngine.getVehicle(po.getUID());
+		// double npcSpeed = npc.speed;
 
-		// TODO: Apply gravity
-		Vector3f pos = npc.getWorldLocation();
-		float floor = terrain.getHeight(pos.x, pos.z);
-		pos.y = floor - npc.getShape().getLowestVertexY() * 0.25f;
-		npc.setLocalLocation(pos);
+		// Vector3f pos = npc.getWorldLocation();
+		// float floor = terrain.getHeight(pos.x, pos.z);
+		// pos.y = floor - npc.getShape().getLowestVertexY() * 0.25f;
+		// npc.setLocalLocation(pos);
 
-		npcSpeed -= time * stoppingForce;
+		// npcSpeed -= time * stoppingForce;
 
-		if (npcSpeed < 0)
-		{
-			npcSpeed = 0;
-		}
+		// if (npcSpeed < 0)
+		// {
+		// npcSpeed = 0;
+		// }
+
+		// if (npc.wantsAccel)
+		// {
+		// npcSpeed += time * acceleration;
+
+		// if (npcSpeed > maxSpeed)
+		// {
+		// npcSpeed = maxSpeed;
+		// }
+		// } else if (npc.wantsDecel)
+		// {
+		// npcSpeed -= time * deceleration;
+
+		// if (npcSpeed < 0)
+		// {
+		// npcSpeed = 0;
+		// }
+		// }
+
+		// if (npc.wantsTurnLeft)
+		// {
+		// npcSpeed += npcSpeed == 0 ? 0.1 : 0;
+		// double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst;
+		// npc.worldYaw((float) yaw);
+		// } else if (npc.wantsTurnRight)
+		// {
+		// npcSpeed += npcSpeed == 0 ? 0.1 : 0;
+		// double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst * -1;
+		// npc.worldYaw((float) yaw);
+		// }
+
+		// npc.speed = npcSpeed;
+		// float pitch = (float) npcSpeed;
+		// npc.setSoundPitch(pitch);
+
+		// Vector3f oldPosition = npc.getWorldLocation();
+		// Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
+		// fwdDirection.mul(npc.getWorldRotation());
+		// fwdDirection.mul((float) (npcSpeed * 0.1));
+		// Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(),
+		// fwdDirection.z());
+		// npc.setLocalLocation(newPosition);
 
 		if (npc.wantsAccel)
 		{
-			npcSpeed += time * acceleration;
-
-			if (npcSpeed > maxSpeed)
-			{
-				npcSpeed = maxSpeed;
-			}
+			v.applyEngineForce(2000, 2);
+			v.applyEngineForce(2000, 3);
 		} else if (npc.wantsDecel)
 		{
-			npcSpeed -= time * deceleration;
+			v.setBrake(100, 2);
+			v.setBrake(100, 3);
+		} else
+		{
+			v.applyEngineForce(0, 2);
+			v.applyEngineForce(0, 3);
+		}
 
-			if (npcSpeed < 0)
-			{
-				npcSpeed = 0;
-			}
+		if ((npc.wantsTurnLeft || npc.wantsTurnRight) && v.getCurrentSpeedKmHour() < 2)
+		{
+			v.applyEngineForce(400, 2);
+			v.applyEngineForce(400, 3);
+			v.setBrake(0, 2);
+			v.setBrake(0, 3);
 		}
 
 		if (npc.wantsTurnLeft)
 		{
-			npcSpeed += npcSpeed == 0 ? 0.1 : 0;
-			double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst;
-			npc.worldYaw((float) yaw);
+			v.setSteeringValue(0.5f, 0);
+			v.setSteeringValue(0.5f, 1);
+			v.setSteeringValue(-0.25f, 2);
+			v.setSteeringValue(-0.25f, 3);
 		} else if (npc.wantsTurnRight)
 		{
-			npcSpeed += npcSpeed == 0 ? 0.1 : 0;
-			double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst * -1;
-			npc.worldYaw((float) yaw);
+			v.setSteeringValue(-0.5f, 0);
+			v.setSteeringValue(-0.5f, 1);
+			v.setSteeringValue(0.25f, 2);
+			v.setSteeringValue(0.25f, 3);
+		} else
+		{
+			v.setSteeringValue(0, 0);
+			v.setSteeringValue(0, 1);
+			v.setSteeringValue(0, 2);
+			v.setSteeringValue(0, 3);
 		}
 
-		npc.speed = npcSpeed;
-		float pitch = (float) npcSpeed;
-		npc.setSoundPitch(pitch);
-
-		Vector3f oldPosition = npc.getWorldLocation();
-		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
-		fwdDirection.mul(npc.getWorldRotation());
-		fwdDirection.mul((float) (npcSpeed * 0.1));
-		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
-		npc.setLocalLocation(newPosition);
-
 		// Log.debug("Sending NPC move message\n");
-		protocolClient.sendNpcMoveMessage(newPosition, getLookAt(npc), pitch);
+		protocolClient.sendNpcMoveMessage(npc.getWorldLocation(), getLookAt(npc), 1);
 	}
 
 	public void setPrimaryNpcHandler()
@@ -824,6 +904,11 @@ public class MyGame extends VariableFrameRateGame {
 	public NpcManager getNpcManager()
 	{
 		return npcManager;
+	}
+
+	public PhysicsObject getNpcPhysicsObject()
+	{
+		return npcP;
 	}
 
 	// --------- Movement Section --------
@@ -921,13 +1006,17 @@ public class MyGame extends VariableFrameRateGame {
 
 	private void updatePosition()
 	{
-		Vector3f oldPosition = avatar.getWorldLocation();
-		Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
-		fwdDirection.mul(avatar.getWorldRotation());
-		fwdDirection.mul((float) (speed * 0.1));
-		Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(), fwdDirection.z());
-		avatar.setLocalLocation(newPosition);
-		protocolClient.sendMoveMessage(newPosition, getLookAt(avatar), engineSound.getPitch());
+		// Vector3f oldPosition = avatar.getWorldLocation();
+		// Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
+		// fwdDirection.mul(avatar.getWorldRotation());
+		// fwdDirection.mul((float) (speed * 0.1));
+		// Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(),
+		// fwdDirection.z());
+		// avatar.setLocalLocation(newPosition);
+		// protocolClient.sendMoveMessage(newPosition, getLookAt(avatar),
+		// engineSound.getPitch());
+
+		protocolClient.sendMoveMessage(avatar.getWorldLocation(), getLookAt(avatar), engineSound.getPitch());
 	}
 
 	private void checkForCollisions()

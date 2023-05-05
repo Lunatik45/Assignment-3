@@ -128,7 +128,7 @@ public class ProtocolClient extends GameConnectionClient {
 
 				try
 				{
-					npcManager.createGhostAvatar(npcPosition, lookat);
+					npcManager.createNpcAvatar(npcPosition, lookat);
 				} catch (IOException e)
 				{
 					System.out.println("error creating ghost avatar");

@@ -37,7 +37,7 @@ public class CorrectDrive extends BTAction{
 		double angleAbs = Math.abs(angle);
 		boolean left = angle < 0;
 
-		Log.print("Angle: %.2f\n", angle);
+		// Log.print("Angle: %.2f\n", angle);
 
 		npc.resetDriveStatus();
 
