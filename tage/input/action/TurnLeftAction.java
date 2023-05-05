@@ -30,14 +30,15 @@ public class TurnLeftAction extends AbstractInputAction {
 	@Override
 	public void performAction(float time, Event e)
 	{
-		steer += steerInc;
-		if(steer > steerMax){
-			steer = steerMax;
-		}
-
+		// steer += steerInc;
+		// if(steer > steerMax){
+		// 	steer = steerMax;
+		// }
+		steer = 0.15f;
 		this.vehicle.setSteeringValue(steer, 0);
 		this.vehicle.setSteeringValue(steer, 1);
 
+		steer = 0.0f;
 
 		// float keyValue = e.getValue();
 		// if (keyValue > -.2 && keyValue < .2)

@@ -67,6 +67,7 @@ import tage.input.action.DecelAction;
 import tage.input.action.TurnLeftAction;
 import tage.input.action.TurnRightAction;
 import tage.networking.IGameConnection.ProtocolType;
+import tage.shapes.AnimatedShape;
 import tage.shapes.ImportedModel;
 import tage.shapes.TerrainPlane;
 import tage.physics.PhysicsEngine;
@@ -97,6 +98,7 @@ public class MyGame extends VariableFrameRateGame {
 	private SpringCameraController springController;
 	private File scriptFile;
 	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, trafficCone, myRoad, frontRW, frontLW, backRW, backLW;
+	private AnimatedShape avatarAS;
 	private GhostManager ghostManager;
 	private IAudioManager audioMgr;
 	private InputManager im;
@@ -124,7 +126,8 @@ public class MyGame extends VariableFrameRateGame {
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP;
 	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
-	private Boolean toggleCamaraType = false;
+	private Boolean toggleCameraType = false;
+	private Boolean toggleAnimation = false;
 	private Boolean mouseIsRecentering = false;
 	private String textureSelection = "";
 
@@ -242,6 +245,8 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void loadShapes()
 	{
+		avatarAS = new AnimatedShape( "car.rkm", "car.rks");
+		avatarAS.loadAnimation("ACCEL", "car.rka");
 		ghostShape = new ImportedModel("box_car.obj");
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
 		trafficConeShape = new ImportedModel("trafficCone.obj");
@@ -252,10 +257,10 @@ public class MyGame extends VariableFrameRateGame {
 		// terrainQ4S = new TerrainPlane(25);
 		myRoadShape = new ImportedModel("myRoad.obj");
 		boxCarShape = new ImportedModel("box_car.obj");
-		backRWShape = new ImportedModel("BackRightWheel.obj");
-		frontRWShape = new ImportedModel("FrontRightWheel.obj");
-		backLWShape = new ImportedModel("BackLeftWheel.obj");
-		frontLWShape = new ImportedModel("FrontLeftWheel.obj");
+		// backRWShape = new ImportedModel("BackRightWheel.obj");
+		// frontRWShape = new ImportedModel("FrontRightWheel.obj");
+		// backLWShape = new ImportedModel("BackLeftWheel.obj");
+		// frontLWShape = new ImportedModel("FrontLeftWheel.obj");
 	}
 
 	@Override
@@ -304,25 +309,28 @@ public class MyGame extends VariableFrameRateGame {
 		// terrain.getRenderStates().setWireframe(true);
 		terrain.setHeightMap(terrainHeightMap);
 
-		float heightOffGround = -boxCarShape.getLowestVertexY();
-		avatar = new GameObject(GameObject.root(), boxCarShape, avatarTex);
+		// float heightOffGround = -boxCarShape.getLowestVertexY();
+		// avatar = new GameObject(GameObject.root(), boxCarShape, avatarTex);
+		float heightOffGround = -avatarAS.getLowestVertexY();
+		avatar = new GameObject(GameObject.root(), avatarAS, avatarTex);
+		avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
 		// avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, 8f, 0.0f));
 		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
 		// avatar.getRenderStates().setWireframe(true);
 
 
-		backRW = new GameObject(avatar, backRWShape, boxCarTex);
-		backLW = new GameObject(avatar, backLWShape, boxCarTex);
-		frontRW = new GameObject(avatar, frontRWShape, boxCarTex);
-		frontLW = new GameObject(avatar, frontLWShape, boxCarTex);
+		// backRW = new GameObject(avatar, backRWShape, boxCarTex);
+		// backLW = new GameObject(avatar, backLWShape, boxCarTex);
+		// frontRW = new GameObject(avatar, frontRWShape, boxCarTex);
+		// frontLW = new GameObject(avatar, frontLWShape, boxCarTex);
 
 		// myRoad = new GameObject(GameObject.root(), myRoadShape, myRoadTex);
 		// myRoad.getRenderStates().setTiling(1);
 		// myRoad.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
 
-		// trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
-		// trafficCone.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.65f, 0.0f));
-		// trafficCone.setLocalScale((new Matrix4f()).scale(0.25f, 0.25f, 0.25f));
+		trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		
+		trafficCone.setLocalTranslation((new Matrix4f()).translate(5.0f, 0.0f, 4.0f));
 
 		// terrain = new GameObject(GameObject.root(), terrainShape);
 		// terrain.getRenderStates().setWireframe(true);
@@ -464,10 +472,16 @@ public class MyGame extends VariableFrameRateGame {
 		tempTransform = toDoubleArray(translation.get(vals));
 		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
 		// terrainP.setFriction(1.0f);
-		float [] test = {1000f, 0.75f , 1000f};
-		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, test);
+		float [] planeSize = {1000f, 0.75f , 1000f};
+		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, planeSize);
 		terrain.setPhysicsObject(terrainP);
 
+		// translation = new Matrix4f(trafficCone.getLocalTranslation());
+		// tempTransform = toDoubleArray(translation.get(vals));
+		// float [] coneSize = {0.120f, 0.184f , 0.120f};
+		// trafficConeP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 5f, tempTransform, coneSize);
+		// trafficCone.setPhysicsObject(trafficConeP);
+		// trafficConeP.setBounciness(1.0f);
 		// initMouseMode();
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
@@ -475,7 +489,8 @@ public class MyGame extends VariableFrameRateGame {
 		DecelAction decelAction = new DecelAction(this, vehicle, protocolClient);
 		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
-		ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
+		ToggleCameraType toggleCameraType = new ToggleCameraType(this);
+		ToggleAnimationType toggleAnimationType = new ToggleAnimationType(this);
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
@@ -487,7 +502,8 @@ public class MyGame extends VariableFrameRateGame {
 
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCamaraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCameraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key._3, toggleAnimationType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	}
 
 	@Override
@@ -565,6 +581,7 @@ public class MyGame extends VariableFrameRateGame {
 		amt = elapsedTime * 0.03;
 		double amtt = totalTime * 0.001;
 		
+		avatarAS.updateAnimation();
 
 		//Temp trigger to rotate back wheels
 		// if(rotatingWheels){
@@ -622,7 +639,7 @@ public class MyGame extends VariableFrameRateGame {
 			}
 		}
 
-		if(!toggleCamaraType){
+		if(!toggleCameraType){
 			springController.updateCameraPosition(elapsed, speed);
 		} else {
 			orbitController.updateCameraPosition();
@@ -630,8 +647,19 @@ public class MyGame extends VariableFrameRateGame {
 		updateSounds();
 	}
 
-	public void toggleCamara(){
-		toggleCamaraType = !toggleCamaraType;
+	public void toggleCamera(){
+		toggleCameraType = !toggleCameraType;
+	}
+
+	public void ToggleAnimation() {
+		toggleAnimation = !toggleAnimation;
+		if (toggleAnimation) {
+			System.out.println("Animating!");
+			avatarAS.stopAnimation();
+			avatarAS.playAnimation("ACCEL", 0.5f, AnimatedShape.EndType.LOOP, 0);
+		} else {
+			avatarAS.stopAnimation();
+		}
 	}
 
 	private void updateSounds()
@@ -830,7 +858,7 @@ public class MyGame extends VariableFrameRateGame {
 			double mouseDeltaX = prevMouseX - curMouseX;
 			double mouseDeltaY = prevMouseY - curMouseY;
 
-			if(!toggleCamaraType){
+			if(!toggleCameraType){
 				springController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
 			} else {
 				orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
@@ -1004,17 +1032,31 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
-	private class ToggleCamaraType extends AbstractInputAction {
+	private class ToggleCameraType extends AbstractInputAction {
 		MyGame myGame;
 
-		ToggleCamaraType(MyGame myGame){
+		ToggleCameraType(MyGame myGame){
 			this.myGame = myGame;
 		}
 
 		@Override
 		public void performAction(float time, net.java.games.input.Event evt)
 		{
-			myGame.toggleCamara();
+			myGame.toggleCamera();
+		}
+	}
+
+	private class ToggleAnimationType extends AbstractInputAction {
+		MyGame myGame;
+
+		ToggleAnimationType(MyGame myGame){
+			this.myGame = myGame;
+		}
+
+		@Override
+		public void performAction(float time, net.java.games.input.Event evt)
+		{
+			myGame.ToggleAnimation();
 		}
 	}
 
