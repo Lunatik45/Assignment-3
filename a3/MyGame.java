@@ -301,7 +301,7 @@ public class MyGame extends VariableFrameRateGame {
 		terrain.getRenderStates().setTiling(1);
 		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
 		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -5, 0));
-		terrain.getRenderStates().setWireframe(true);
+		// terrain.getRenderStates().setWireframe(true);
 		terrain.setHeightMap(terrainHeightMap);
 
 		float heightOffGround = -boxCarShape.getLowestVertexY();
