@@ -61,7 +61,7 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
 	JBulletPhysicsObject.lookUpObject.put(body,this);
     }
 
-    public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape chassis, boolean isVehicle, DynamicsWorld dw)
+    public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape chassis, boolean isVehicle)
     {
         this.uid = uid;
         this.mass = mass;
@@ -84,6 +84,7 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
         this.shape = chassis;
 
         localInertia = new Vector3f(0, 0, 0);
+
         if (isDynamic) {
             shape.calculateLocalInertia(mass, localInertia);
         }

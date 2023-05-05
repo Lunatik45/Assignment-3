@@ -408,7 +408,7 @@ public class MyGame extends VariableFrameRateGame {
 		
 		// --- create physics world ---
 
-		float chassisMass = 800.0f;
+		float chassisMass = 1500.0f;
 		float up[] = {0,1,0};
 		double[] tempTransform;
 		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
@@ -462,8 +462,10 @@ public class MyGame extends VariableFrameRateGame {
 
 		translation = new Matrix4f(terrain.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
-		terrainP.setFriction(1.0f);
+		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
+		// terrainP.setFriction(1.0f);
+		float [] test = {1000f, 0.75f , 1000f};
+		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, test);
 		terrain.setPhysicsObject(terrainP);
 
 		// initMouseMode();
@@ -582,7 +584,7 @@ public class MyGame extends VariableFrameRateGame {
 				
 				// Skip the code below and go to the next GameObject if the PO is null
 				if(po == null) continue;
-				
+
 				mat.set(toFloatArray(po.getTransform()));
 				mat2.set(3,0,mat.m30());
 				mat2.set(3,1,mat.m31());

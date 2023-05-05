@@ -31,7 +31,7 @@ public class TurnRightAction extends AbstractInputAction {
 	public void performAction(float time, Event e)
 	{
 		steer -= steerInc;
-		if(steer > steerMax){
+		if(steer < steerMax){
 			steer = steerMax;
 		}
 
