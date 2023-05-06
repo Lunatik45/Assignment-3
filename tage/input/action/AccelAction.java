@@ -36,8 +36,8 @@ public class AccelAction extends AbstractInputAction {
 		// av.setLocalLocation(newPosition);
 		// protClient.sendMoveMessage(av.getWorldLocation());
 		// System.out.println("Accelerating");
-		this.vehicle.applyEngineForce(2000f, 2);
-		this.vehicle.applyEngineForce(2000f, 3);
+		this.vehicle.applyEngineForce(5000f, 2);
+		this.vehicle.applyEngineForce(5000f, 3);
 		// game.accelerate(time);
 	}
 }

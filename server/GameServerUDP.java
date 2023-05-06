@@ -4,14 +4,19 @@ import java.io.IOException;
 import java.net.InetAddress;
 import java.util.UUID;
 
+import tage.Log;
 import tage.networking.server.GameConnectionServer;
 import tage.networking.server.IClientInfo;
 
 public class GameServerUDP extends GameConnectionServer<UUID> {
 
-	public GameServerUDP(int localPort) throws IOException
+	private NPCController npcController;
+	private UUID npcClient;
+
+	public GameServerUDP(int localPort, NPCController npcController) throws IOException
 	{
 		super(localPort, ProtocolType.UDP);
+		this.npcController = npcController;
 	}
 
 	@Override
@@ -21,14 +26,12 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		String[] messageTokens = message.split(",");
 
 		if (messageTokens.length > 0)
-		{ // JOIN -- Case where client just joined the server
-			// Received Message Format: (join,localId)
+		{
 			if (messageTokens[0].compareTo("join") == 0)
 			{
 				try
 				{
-					IClientInfo ci;
-					ci = getServerSocket().createClientInfo(senderIP, senderPort);
+					IClientInfo ci = getServerSocket().createClientInfo(senderIP, senderPort);
 					UUID clientID = UUID.fromString(messageTokens[1]);
 					addClient(ci, clientID);
 					System.out.println("Join request received from - " + clientID.toString());
@@ -39,9 +42,7 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				}
 			}
 
-			// BYE -- Case where clients leaves the server
-			// Received Message Format: (bye,localId)
-			if (messageTokens[0].compareTo("bye") == 0)
+			else if (messageTokens[0].compareTo("bye") == 0)
 			{
 				UUID clientID = UUID.fromString(messageTokens[1]);
 				System.out.println("Exit request received from - " + clientID.toString());
@@ -49,67 +50,75 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				removeClient(clientID);
 			}
 
-			// CREATE -- Case where server receives a create message (to specify avatar
-			// location)
-			// Received Message Format: (create,localId,x,y,z)
-			if (messageTokens[0].compareTo("create") == 0)
+			else if (messageTokens[0].compareTo("create") == 0)
 			{
 				UUID clientID = UUID.fromString(messageTokens[1]);
-				// String[] pos = { messageTokens[2], messageTokens[3], messageTokens[4] };
-				// sendCreateMessages(clientID, pos);
 				sendCreateMessages(clientID,
 						message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
 				sendWantsDetailsMessages(clientID);
 			}
 
-			// DETAILS-FOR --- Case where server receives a details for message
-			// Received Message Format: (dsfr,remoteId,localId,x,y,z)
-			if (messageTokens[0].compareTo("dsfr") == 0)
+			else if (messageTokens[0].compareTo("dsfr") == 0)
 			{
 				UUID clientID = UUID.fromString(messageTokens[1]);
 				UUID remoteID = UUID.fromString(messageTokens[2]);
-				// String[] pos = { messageTokens[3], messageTokens[4], messageTokens[5] };
-				// Matrix4f rotation = new Matrix4f();
-				// int i = 5;
-				// for (int j = 0; j < 4; j++)
-				// {
-				// for (int k = 0; k < 4; k++)
-				// {
-				// rotation.set(j, k, Float.parseFloat(messageTokens[i++]));
-				// }
-				// }
-				// sendDetailsForMessage(clientID, remoteID, pos, rotation);
 				sendDetailsForMessage(clientID, remoteID, message.substring(
 						messageTokens[0].length() + messageTokens[1].length() + messageTokens[2].length() + 3));
 			}
 
-			// MOVE --- Case where server receives a move message
-			// Received Message Format: (move,localId,x,y,z)
-			if (messageTokens[0].compareTo("move") == 0)
+			else if (messageTokens[0].compareTo("move") == 0)
 			{
 				UUID clientID = UUID.fromString(messageTokens[1]);
-				// String[] pos = { messageTokens[2], messageTokens[3], messageTokens[4] };
-				// Matrix4f rotation = new Matrix4f();
-				// int i = 5;
-				// for (int j = 0; j < 4; j++)
-				// {
-				// 	for (int k = 0; k < 4; k++)
-				// 	{
-				// 		rotation.set(j, k, Float.parseFloat(messageTokens[i++]));
-				// 	}
-				// }
-				// sendMoveMessages(clientID, pos, rotation);
-				// System.out.println(message);
-				sendMoveMessages(clientID, 
+				sendMoveMessages(clientID,
 						message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+			}
+		
+			else if (messageTokens[0].compareTo("npcmove") == 0)
+			{
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				sendNPCmove(clientID, message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+				npcController.updateNpc(message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+			}
+		
+			else if (messageTokens[0].compareTo("getnpc") == 0)
+			{
+				Log.trace("getnpc message received\n");
+				if (npcClient == null)
+				{
+					Log.trace("npcClient is null\n");
+					npcController.init(this);
+					npcClient = UUID.fromString(messageTokens[1]);
+					Log.trace("Asking client for targets\n");
+					sendGetNPCTargets(npcClient);
+					Log.trace("Sending createNPC message\n");
+					sendCreateNPCmsg(npcClient, npcController.getNpcStatus());
+				}
+				else
+				{	
+					Log.trace("Sending createNPC message\n");
+					sendCreateNPCmsg(npcClient, npcController.getNpcStatus());
+				}
+			}
+
+			else if (messageTokens[0].compareTo("npctargets") == 0)
+			{
+				Log.trace("npctargets message received\n");
+				npcController.setTargets(message.substring(messageTokens[0].length() + 1));
+			}
+
+			else {
+				Log.print("Unhandled message: %s\n", message);
 			}
 		}
 	}
 
-	// Informs the client who just requested to join the server if their if their
-	// request was able to be granted.
-	// Message Format: (join,success) or (join,failure)
-
+	/**
+	 * Informs the client who just requested to join the server if their request was
+	 * able to be granted.
+	 * 
+	 * @param clientID The client that sent the JOIN message
+	 * @param success  Whether or not the client was able to join the server
+	 */
 	public void sendJoinedMessage(UUID clientID, boolean success)
 	{
 		try
@@ -127,13 +136,13 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		}
 	}
 
-	// Informs a client that the avatar with the identifier remoteId has left the
-	// server.
-	// This message is meant to be sent to all client currently connected to the
-	// server
-	// when a client leaves the server.
-	// Message Format: (bye,remoteId)
-
+	/**
+	 * Informs a client that the avatar with the identifier remoteId has left the
+	 * server. This message is meant to be sent to all clients currently connected
+	 * to the server when a client leaves the server.
+	 * 
+	 * @param clientID The client that sent the BYE message
+	 */
 	public void sendByeMessages(UUID clientID)
 	{
 		try
@@ -146,27 +155,21 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		}
 	}
 
-	// Informs a client that a new avatar has joined the server with the unique
-	// identifier
-	// remoteId. This message is intended to be send to all clients currently
-	// connected to
-	// the server when a new client has joined the server and sent a create message
-	// to the
-	// server. This message also triggers WANTS_DETAILS messages to be sent to all
-	// client
-	// connected to the server.
-	// Message Format: (create,remoteId,x,y,z) where x, y, and z represent the
-	// position
-
-	// public void sendCreateMessages(UUID clientID, String[] position)
+	/**
+	 * Informs a client that a new avatar has joined the server with the unique
+	 * identifier remoteId. This message is intended to be send to all clients
+	 * currently connected to the server when a new client has joined the server and
+	 * sent a create message to the server. This message also triggers WANTS_DETAILS
+	 * messages to be sent to all clients connected to the server.
+	 * 
+	 * @param clientID The client that sent the CREATE message
+	 * @param data     The data from the CREATE message
+	 */
 	public void sendCreateMessages(UUID clientID, String data)
 	{
 		try
 		{
 			String message = new String("create," + clientID.toString());
-			// message += "," + position[0];
-			// message += "," + position[1];
-			// message += "," + position[2];
 			message += "," + data;
 			forwardPacketToAll(message, clientID);
 		} catch (IOException e)
@@ -175,33 +178,22 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		}
 	}
 
-	// Informs a client of the details for a remote client's avatar. This message is
-	// in response
-	// to the server receiving a DETAILS_FOR message from a remote client. That
-	// remote client's
-	// message's localId becomes the remoteId for this message, and the remote
-	// client's message's
-	// remoteId is used to send this message to the proper client.
-	// Message Format: (dsfr,remoteId,x,y,z) where x, y, and z represent the
-	// position.
-
-	// public void sendDetailsForMessage(UUID clientID, UUID remoteId, String[]
-	// position, Matrix4f rotation)
+	/**
+	 * Informs a client of the details for a remote client's avatar. This message is
+	 * in response to the server receiving a DETAILS_FOR message from a remote
+	 * client. That remote client's message's localId becomes the remoteId for this
+	 * message, and the remote client's message's remoteId is used to send this
+	 * message to the proper client.
+	 * 
+	 * @param clientID The client that sent the DETAILS_FOR message
+	 * @param remoteId The client that the DETAILS_FOR message is meant for
+	 * @param data     The data from the DSFR message
+	 */
 	public void sendDetailsForMessage(UUID clientID, UUID remoteId, String data)
 	{
 		try
 		{
 			String message = new String("dsfr," + remoteId.toString());
-			// message += "," + position[0];
-			// message += "," + position[1];
-			// message += "," + position[2];
-			// for (int i = 0; i < 4; i++)
-			// {
-			// for (int j = 0; j < 4; j++)
-			// {
-			// message += "," + rotation.get(i, j);
-			// }
-			// }
 			message += "," + data;
 
 			sendPacket(message, clientID);
@@ -211,13 +203,13 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		}
 	}
 
-	// Informs a local client that a remote client wants the local client's avatar's
-	// information.
-	// This message is meant to be sent to all clients connected to the server when
-	// a new client
-	// joins the server.
-	// Message Format: (wsds,remoteId)
-
+	/**
+	 * Informs a local client that a remote client wants the local client's avatar's
+	 * information. This message is meant to be sent to all clients connected to the
+	 * server when a new client joins the server.
+	 * 
+	 * @param clientID The client that sent the JOIN message
+	 */
 	public void sendWantsDetailsMessages(UUID clientID)
 	{
 		try
@@ -230,34 +222,75 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		}
 	}
 
-	// Informs a client that a remote client's avatar has changed position. x, y,
-	// and z represent
-	// the new position of the remote avatar. This message is meant to be forwarded
-	// to all clients
-	// connected to the server when it receives a MOVE message from the remote
-	// client.
-	// Message Format: (move,remoteId,x,y,z) where x, y, and z represent the
-	// position.
-
-	// public void sendMoveMessages(UUID clientID, String[] position, Matrix4f
-	// rotation)
+	/**
+	 * Informs a client that a remote client's avatar has changed position. This
+	 * message is meant to be forwarded to all clients connected to the server when
+	 * it receives a MOVE message from the remote client.
+	 * 
+	 * @param clientID The client that sent the MOVE message
+	 * @param data     The data from the MOVE message
+	 */
 	public void sendMoveMessages(UUID clientID, String data)
 	{
 		try
 		{
 			String message = new String("move," + clientID.toString());
-			// message += "," + position[0];
-			// message += "," + position[1];
-			// message += "," + position[2];
-			// for (int i = 0; i < 4; i++)
-			// {
-			// for (int j = 0; j < 4; j++)
-			// {
-			// message += "," + rotation.get(i, j);
-			// }
-			// }
 			message += "," + data;
-			// System.out.println(data);
+			forwardPacketToAll(message, clientID);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	/**
+	 * Informs client to create an NPC ghost avatar.
+	 * 
+	 * @param clientID The client that sent the CREATENPC message
+	 * @param data     The data from the CNPC message
+	 */
+	public void sendCreateNPCmsg(UUID clientID, String data)
+	{
+		try
+		{
+			String message = new String("createnpc");
+			message += "," + data;
+			sendPacket(message, clientID);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void sendGetNPCTargets(UUID clientID)
+	{
+		try
+		{
+			String message = new String("getnpctargets");
+			sendPacket(message, npcClient);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void sendNPCStatus(String data)
+	{
+		try
+		{
+			String message = new String("npcstatus," + data);
+			sendPacket(message, npcClient);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void sendNPCmove(UUID clientID, String data)
+	{
+		try
+		{
+			String message = new String("npcmove," + data);
 			forwardPacketToAll(message, clientID);
 		} catch (IOException e)
 		{

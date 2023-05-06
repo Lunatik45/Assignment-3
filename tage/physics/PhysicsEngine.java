@@ -90,10 +90,11 @@ public interface PhysicsEngine {
 
 	public PhysicsObject addVehicleObject(int uid, float mass, double [] transform, float[] size);
 
-	public RaycastVehicle getVehicle();
+	public RaycastVehicle getVehicle(int uid);
 
-	public VehicleTuning getVehicleTuning();
+	public VehicleTuning getVehicleTuning(int uid);
 
+	public void addWheels(RaycastVehicle myVehicle, VehicleTuning tunning, float[] halfExtents, float radius, float connectionHeight, float width);
 	/**
 	 * Adds a cylinder object to the physics world. This is the default cylinder
 	 * used in the graphical portion of sage and is aligned length-wise with the

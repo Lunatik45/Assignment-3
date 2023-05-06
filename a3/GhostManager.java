@@ -22,15 +22,15 @@ public class GhostManager {
 		game = (MyGame) vfrg;
 	}
 
-	public void createGhostAvatar(UUID id, Vector3f position, Matrix4f rotation, String textureSelection) throws IOException
+	public void createGhostAvatar(UUID id, Vector3f position, Vector3f lookat, String texture) throws IOException
 	{
 		System.out.println("adding ghost with ID: " + id);
 		ObjShape s = game.getGhostShape();
-		TextureImage t = game.getAvatarTex(textureSelection);
-		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position);
+		TextureImage t = game.getAvatarTex(texture);
+		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position, game.getNewEngineSound(), game.getAudioManager());
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		newAvatar.setLocalScale(initialScale);
-		newAvatar.setLocalRotation(rotation);
+		newAvatar.lookAt(lookat);
 		ghostAvatars.add(newAvatar);
 	}
 
@@ -39,6 +39,7 @@ public class GhostManager {
 		GhostAvatar ghostAvatar = findAvatar(id);
 		if (ghostAvatar != null)
 		{
+			ghostAvatar.stopSounds();	
 			game.getEngine().getSceneGraph().removeGameObject(ghostAvatar);
 			ghostAvatars.remove(ghostAvatar);
 		} else
@@ -62,16 +63,29 @@ public class GhostManager {
 		return null;
 	}
 
-	public void updateGhostAvatar(UUID id, Vector3f position, Matrix4f rotation)
+	public void updateGhostAvatar(UUID id, Vector3f position, Vector3f lookat, float pitch)
 	{
 		GhostAvatar ghostAvatar = findAvatar(id);
 		if (ghostAvatar != null)
 		{
 			ghostAvatar.setPosition(position);
-			ghostAvatar.setLocalRotation(rotation);
+			ghostAvatar.lookAt(lookat);
+			ghostAvatar.setSoundPitch(pitch);
 		} else
 		{
 			System.out.println("tried to update ghost avatar position, but unable to find ghost in list");
+		}
+	}
+
+	/**
+	 * Shutdown command primarily used to stop all sounds from playing.
+	 */
+	public void shutdown()
+	{
+		Iterator<GhostAvatar> it = ghostAvatars.iterator();
+		while (it.hasNext())
+		{
+			it.next().stopSounds();
 		}
 	}
 }

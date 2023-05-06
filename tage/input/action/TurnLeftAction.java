@@ -13,7 +13,7 @@ public class TurnLeftAction extends AbstractInputAction {
 	private MyGame game;
 	private GameObject av;
 	private final float steerInc = 0.04f;
-	private final float steerMax = 0.3f;
+	private final float steerMax = 0.5f;
 	private float steer;
 	private float turnConst, turnCoef;
 	private RaycastVehicle vehicle;
@@ -32,26 +32,37 @@ public class TurnLeftAction extends AbstractInputAction {
 	{
 		// steer += steerInc;
 		// if(steer > steerMax){
-		// 	steer = steerMax;
+		// steer = steerMax;
 		// }
-		steer = 0.15f;
-		this.vehicle.setSteeringValue(steer, 0);
-		this.vehicle.setSteeringValue(steer, 1);
+
+		steer = vehicle.getSteeringValue(0);
+		steer += turnConst + (turnCoef * time);
+		if (steer > steerMax)
+		{
+			steer = steerMax;
+		}
+
+		Log.print("Steer: %.4f\n", steer);
+
+		vehicle.setSteeringValue(steer, 0);
+		vehicle.setSteeringValue(steer, 1);
+		vehicle.setSteeringValue(-steer * 0.5f, 2);
+		vehicle.setSteeringValue(-steer * 0.5f, 3);
 
 		steer = 0.0f;
 
 		// float keyValue = e.getValue();
 		// if (keyValue > -.2 && keyValue < .2)
-		// 	return; // deadzone
+		// return; // deadzone
 
 		// av = game.getAvatar();
 
 		// if (game.getSpeed() > 0 && !game.getIsFalling())
 		// {
-		// 	float speed = (float) game.getSpeed();
-		// 	float max = (float) game.getMaxSpeed();
-		// 	float yaw = time * turnCoef * (speed / max) + turnConst;
-		// 	av.worldYaw(yaw);
+		// float speed = (float) game.getSpeed();
+		// float max = (float) game.getMaxSpeed();
+		// float yaw = time * turnCoef * (speed / max) + turnConst;
+		// av.worldYaw(yaw);
 		// }
 	}
 }

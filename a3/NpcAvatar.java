@@ -1,43 +1,38 @@
 package a3;
 
-import java.util.UUID;
+import org.joml.Vector3f;
 
-import org.joml.*;
-
-import tage.*;
+import tage.GameObject;
+import tage.ObjShape;
+import tage.TextureImage;
 import tage.audio.IAudioManager;
 import tage.audio.Sound;
 
-// A ghost MUST be connected as a child of the root,
-// so that it will be rendered, and for future removal.
-// The ObjShape and TextureImage associated with the ghost
-// must have already been created during loadShapes() and
-// loadTextures(), before the game loop is started.
+public class NpcAvatar extends GameObject{
 
-public class GhostAvatar extends GameObject {
-	UUID uuid;
-	Sound engineSound;
-	IAudioManager audioMgr;
+	private Sound engineSound;
+	private IAudioManager audioMgr;
+	public boolean wantsAccel, wantsDecel, wantsTurnLeft, wantsTurnRight;
+	public double speed;
 
-	public GhostAvatar(UUID id, ObjShape s, TextureImage t, Vector3f p, Sound sound, IAudioManager audioMgr)
+	public NpcAvatar(ObjShape s, TextureImage t, Vector3f p, Sound sound, IAudioManager audioMgr)
 	{
 		super(GameObject.root(), s, t);
-		uuid = id;
 		this.audioMgr = audioMgr;
 		engineSound = sound;
 		engineSound.initialize(audioMgr);
 		engineSound.setMaxDistance(50.0f);
 		engineSound.setMinDistance(3.0f);
 		engineSound.setRollOff(2.0f);
-		engineSound.play(80, true);
+		// engineSound.play(80, true);
 		setPosition(p);
+		wantsAccel = false;
+		wantsDecel = false;
+		wantsTurnLeft = false;
+		wantsTurnRight = false;
+		speed = 0;
 	}
-
-	public UUID getID()
-	{
-		return uuid;
-	}
-
+	
 	public void setPosition(Vector3f m)
 	{
 		setLocalLocation(m);

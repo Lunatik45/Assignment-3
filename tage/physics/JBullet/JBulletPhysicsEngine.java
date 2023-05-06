@@ -1,5 +1,6 @@
 package tage.physics.JBullet;
 
+import java.util.HashMap;
 import java.util.Vector;
 
 import javax.vecmath.Vector3f;
@@ -19,6 +20,7 @@ import com.bulletphysics.dynamics.vehicle.DefaultVehicleRaycaster;
 import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
 import com.bulletphysics.dynamics.vehicle.VehicleTuning;
+import com.bulletphysics.dynamics.vehicle.WheelInfo;
 
 // For debug purposes
 import com.bulletphysics.dynamics.RigidBody;
@@ -44,9 +46,11 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		private static final int MAX_PHYSICS_OBJECTS = 1024;
 		private static int nextUID;
 
-		private VehicleRaycaster vehicleRaycaster;
-		private RaycastVehicle vehicle;
-		private VehicleTuning myVehicleTuning;
+		// private VehicleRaycaster vehicleRaycaster;
+		// private RaycastVehicle vehicle;
+		private HashMap<Integer, RaycastVehicle> vehicles;
+		private HashMap<Integer, VehicleTuning> vehicleTunings;
+		// private VehicleTuning myVehicleTuning;
 		private DefaultCollisionConfiguration collisionConfiguration;
 		private CollisionDispatcher dispatcher;
 		private SequentialImpulseConstraintSolver solver;
@@ -105,6 +109,9 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			setGravity(gravity_vector);
 
 			objects = new Vector<PhysicsObject>(50, 25);
+
+			vehicles = new HashMap<>();
+			vehicleTunings = new HashMap<>();
 		}
 		
 		/*
@@ -297,27 +304,68 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 			this.dynamicsWorld.addRigidBody(vehicleObject.getRigidBody());
 			this.objects.add(vehicleObject);
 
-		    vehicleRaycaster = new DefaultVehicleRaycaster(this.dynamicsWorld);
+		    VehicleRaycaster vehicleRaycaster = new DefaultVehicleRaycaster(this.dynamicsWorld);
 
-			myVehicleTuning = new VehicleTuning();
+			VehicleTuning myVehicleTuning = new VehicleTuning();
 
-			vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody() , vehicleRaycaster);
+			RaycastVehicle vehicle = new RaycastVehicle(myVehicleTuning, vehicleObject.getRigidBody() , vehicleRaycaster);
 			vehicle.setCoordinateSystem(0, 1, 2);
 	
 			//Disable Deactivation
 			vehicle.getRigidBody().setActivationState(CollisionObject.DISABLE_DEACTIVATION);
 			
 			dynamicsWorld.addVehicle(vehicle);
+			vehicles.put(uid, vehicle);
+			vehicleTunings.put(uid, myVehicleTuning);
 
 			return vehicleObject;
 		}
 
-		public RaycastVehicle getVehicle(){
-			return vehicle;
+		public RaycastVehicle getVehicle(int uid){
+			return vehicles.get(uid);
 		}
 
-		public VehicleTuning getVehicleTuning(){
-			return myVehicleTuning;
+		public VehicleTuning getVehicleTuning(int uid){
+			return vehicleTunings.get(uid);
+		}
+
+		public void addWheels(RaycastVehicle myVehicle, VehicleTuning tuning, float[] chassisHalfExtens, float wheelRadius, float connectionHeight, float wheelWidth) {
+			Vector3f wheelDirectionCS0 = new Vector3f(0, -1, 0);
+			Vector3f wheelAxleCS = new Vector3f(-1, 0, 0);
+			float suspensionRestLength = 0.6f;
+	
+			// Adds the front wheels
+			Vector3f wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelRadius, connectionHeight,
+					chassisHalfExtens[2] - wheelWidth);
+			myVehicle.addWheel(wheelConnectionPoint, wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+					wheelRadius, tuning, true);
+	
+			wheelConnectionPoint = new Vector3f(-chassisHalfExtens[0] + wheelRadius, connectionHeight,
+					chassisHalfExtens[2] - wheelWidth);
+			myVehicle.addWheel(wheelConnectionPoint, wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+					wheelRadius, tuning, true);
+	
+			// Adds the rear wheels
+			wheelConnectionPoint = new Vector3f(-chassisHalfExtens[0] + wheelRadius, connectionHeight,
+					(-chassisHalfExtens[2]) + wheelWidth);
+			myVehicle.addWheel(wheelConnectionPoint, wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+					wheelRadius, tuning, false);
+	
+			wheelConnectionPoint = new Vector3f(chassisHalfExtens[0] - wheelRadius, connectionHeight,
+					(-chassisHalfExtens[2]) + wheelWidth);
+			myVehicle.addWheel(wheelConnectionPoint, wheelDirectionCS0, wheelAxleCS, suspensionRestLength,
+					wheelRadius, tuning, false);
+	
+			// Edit wheel info for all 4 wheels
+			for (int i = 0; i < 4; i++)
+			{
+				WheelInfo wheel = myVehicle.getWheelInfo(i);
+				wheel.suspensionStiffness = 20f;
+				wheel.wheelsDampingCompression = 4.4f;
+				wheel.wheelsDampingRelaxation = 2.3f;
+				wheel.frictionSlip = 1000f;
+				wheel.rollInfluence = 0.1f;
+			}
 		}
 
 		public PhysicsObject addStaticPlaneObject(int uid, double[] transform, float[] up_vector,

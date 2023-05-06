@@ -23,6 +23,7 @@ public class Sound
 	protected SoundType type;		// The type of the sound
 	protected AudioResource resource;	// The audio resource the sound uses
 	protected IAudioPlayer player;		// The audio player the sound uses
+	protected float pitch;			// The pitch of the sound
 	
 	protected Sound()
 	{
@@ -44,6 +45,7 @@ public class Sound
 		this.volume = volume;
 		this.resource = resource;
 		this.type = type;
+		pitch = 1;
 	}
 	
 	/**
@@ -196,7 +198,13 @@ public class Sound
 	 */
 	public void setPitch(float pitch)
 	{
+		this.pitch = pitch;
 		player.setPitch(pitch);
+	}
+
+	public float getPitch()
+	{
+		return pitch;
 	}
 	
 	/**
