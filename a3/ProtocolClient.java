@@ -129,6 +129,7 @@ public class ProtocolClient extends GameConnectionClient {
 				try
 				{
 					npcManager.createNpcAvatar(npcPosition, lookat);
+					Log.debug("Created npc\n");
 				} catch (IOException e)
 				{
 					System.out.println("error creating npc avatar");
@@ -316,11 +317,9 @@ public class ProtocolClient extends GameConnectionClient {
 			message += String.format(",%.2f", lookat.x());
 			message += String.format(",%.2f", lookat.y());
 			message += String.format(",%.2f", lookat.z());
-			message += "," + pitch;
+			message += String.format(",%.2f", pitch);
 
 			sendPacket(message);
-
-			// Log.debug("Sent NPC move message\n");
 		} catch (IOException e)
 		{
 			e.printStackTrace();
@@ -332,6 +331,26 @@ public class ProtocolClient extends GameConnectionClient {
 		try
 		{
 			sendPacket(new String("getnpc," + id.toString()));
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void forceNpcUpdate(Vector3f position, Vector3f lookat, float pitch)
+	{
+		try
+		{
+			String message = new String("forcenpcmove," + id.toString());
+			message += String.format(",%.2f", position.x());
+			message += String.format(",%.2f", position.y());
+			message += String.format(",%.2f", position.z());
+			message += String.format(",%.2f", lookat.x());
+			message += String.format(",%.2f", lookat.y());
+			message += String.format(",%.2f", lookat.z());
+			message += String.format(",%.2f", pitch);
+
+			sendPacket(message);
 		} catch (IOException e)
 		{
 			e.printStackTrace();

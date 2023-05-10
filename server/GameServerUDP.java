@@ -12,11 +12,13 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 
 	private NPCController npcController;
 	private UUID npcClient;
+	private int blockHandlerUpdates;
 
 	public GameServerUDP(int localPort, NPCController npcController) throws IOException
 	{
 		super(localPort, ProtocolType.UDP);
 		this.npcController = npcController;
+		blockHandlerUpdates = 0;
 	}
 
 	@Override
@@ -72,14 +74,21 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				sendMoveMessages(clientID,
 						message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
 			}
-		
+
 			else if (messageTokens[0].compareTo("npcmove") == 0)
 			{
-				UUID clientID = UUID.fromString(messageTokens[1]);
-				sendNPCmove(clientID, message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
-				npcController.updateNpc(message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+				if (blockHandlerUpdates <= 0)
+				{
+					UUID clientID = UUID.fromString(messageTokens[1]);
+					String msg = message.substring(messageTokens[0].length() + messageTokens[1].length() + 2);
+					sendNPCmove(clientID, msg);
+					npcController.updateNpc(msg);
+				} else
+				{
+					blockHandlerUpdates--;
+				}
 			}
-		
+
 			else if (messageTokens[0].compareTo("getnpc") == 0)
 			{
 				Log.trace("getnpc message received\n");
@@ -92,9 +101,8 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 					sendGetNPCTargets(npcClient);
 					Log.trace("Sending createNPC message\n");
 					sendCreateNPCmsg(npcClient, npcController.getNpcStatus());
-				}
-				else
-				{	
+				} else
+				{
 					Log.trace("Sending createNPC message\n");
 					sendCreateNPCmsg(UUID.fromString(messageTokens[1]), npcController.getNpcStatus());
 				}
@@ -106,7 +114,16 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				npcController.setTargets(message.substring(messageTokens[0].length() + 1));
 			}
 
-			else {
+			else if (messageTokens[0].compareTo("forcenpcmove") == 0)
+			{
+				blockHandlerUpdates = 5;
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				sendNPCmove(clientID, message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+				npcController.updateNpc(message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+			}
+
+			else
+			{
 				Log.print("Unhandled message: %s\n", message);
 			}
 		}

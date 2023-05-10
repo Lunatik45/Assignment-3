@@ -130,7 +130,7 @@ public class MyGame extends VariableFrameRateGame {
 	private double startTime, prevTime, elapsedTime, amt, volume = 1;
 	private float elapsed;
 	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0;
-	private int serverPort;
+	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP;
 	private PhysicsHingeConstraint frontRWHinge, frontLWHinge, backRWHinge, backLWHinge;
@@ -328,9 +328,9 @@ public class MyGame extends VariableFrameRateGame {
 		terrain = new GameObject(GameObject.root(), terrainShape, terrainTex);
 		terrain.setIsTerrain(true);
 		terrain.getRenderStates().setTiling(1);
-		terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
+		terrain.setLocalScale((new Matrix4f()).scale(50, 0, 50));
 		terrain.setLocalTranslation((new Matrix4f()).translateLocal(0, -1, 0));
-		// terrain.getRenderStates().setWireframe(true);
+		terrain.getRenderStates().setWireframe(true);
 		terrain.setHeightMap(terrainHeightMap);
 
 		float heightOffGround = -boxCarShape.getLowestVertexY();
@@ -511,9 +511,11 @@ public class MyGame extends VariableFrameRateGame {
 		npcTransform = toDoubleArray(translation.get(vals));
 		// float[] chassisHalfExtens = {0.316f, 0.251f, 0.575f};
 		float[] chassisHalfExtens = { 1f, 0.5f, 2f };
-		avatarP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, tempTransform,
+		avatarPhysicsUID = physicsEngine.nextUID();
+		npcPhysicsUID = physicsEngine.nextUID();
+		avatarP = physicsEngine.addVehicleObject(avatarPhysicsUID, chassisMass, tempTransform,
 				chassisHalfExtens);
-		npcP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, npcTransform, chassisHalfExtens);
+		npcP = physicsEngine.addVehicleObject(npcPhysicsUID, chassisMass, npcTransform, chassisHalfExtens);
 
 		avatar.setPhysicsObject(avatarP);
 
@@ -996,7 +998,16 @@ public class MyGame extends VariableFrameRateGame {
 				contactPoint = manifold.getContactPoint(j);
 				if (contactPoint.getDistance() < 0.0f)
 				{
-					System.out.println("---- hit between " + obj1 + " and " + obj2);
+					// System.out.println("---- hit between " + obj1 + " and " + obj2);
+					if (!isNpcHandler)
+					{
+						if ((obj1.getUID() == avatarPhysicsUID && obj2.getUID() == npcPhysicsUID) || (obj1.getUID() == npcPhysicsUID && obj2.getUID() == avatarPhysicsUID))
+						{
+							System.out.println("---- hit between avatar and npc");
+							protocolClient.forceNpcUpdate(npcManager.getNpc().getWorldLocation(), getLookAt(
+									npcManager.getNpc()), 1);
+						}
+					}
 					break;
 				}
 			}

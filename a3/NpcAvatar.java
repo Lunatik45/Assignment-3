@@ -26,7 +26,9 @@ public class NpcAvatar extends GameObject{
 		engineSound.setMinDistance(3.0f);
 		engineSound.setRollOff(2.0f);
 		engineSound.play(80, true);
-		setPosition(p, l);
+		// setPosition(p, l);
+		setLocalLocation(p);
+		lookAt(l);
 		wantsAccel = false;
 		wantsDecel = false;
 		wantsTurnLeft = false;
