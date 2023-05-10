@@ -42,7 +42,7 @@ public class TurnRightAction extends AbstractInputAction {
 			steer = steerMax;
 		}
 
-		Log.print("Steer: %.4f\n", steer);
+		// Log.print("Steer: %.4f\n", steer);
 
 		vehicle.setSteeringValue(steer, 0);
 		vehicle.setSteeringValue(steer, 1);
