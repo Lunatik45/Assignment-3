@@ -96,7 +96,7 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				else
 				{	
 					Log.trace("Sending createNPC message\n");
-					sendCreateNPCmsg(npcClient, npcController.getNpcStatus());
+					sendCreateNPCmsg(UUID.fromString(messageTokens[1]), npcController.getNpcStatus());
 				}
 			}
 

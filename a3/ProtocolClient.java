@@ -36,17 +36,17 @@ public class ProtocolClient extends GameConnectionClient {
 	@Override
 	protected void processPacket(Object message)
 	{
-		String strMessage = (String) message;
-		Log.trace("Message recieved: %s\n", strMessage);
-
+		String strMessage;
 		String[] messageTokens;
+
 		try
 		{
+			strMessage = (String) message;
 			messageTokens = strMessage.split(",");
+			Log.trace("Message recieved: %s\n", strMessage);
 		} catch (Exception e)
 		{
-			e.printStackTrace();
-			Log.print("Could not process message %s\n", strMessage);
+			Log.print("Could not process message %s\n", message);
 			return;
 		}
 
@@ -62,7 +62,7 @@ public class ProtocolClient extends GameConnectionClient {
 					sendCreateMessage(game.getPlayerPosition(), game.getPlayerLookAt(), game.getAvatarSelection());
 					sendGetNpcMessage();
 				}
-				if (messageTokens[1].compareTo("failure") == 0)
+				else if (messageTokens[1].compareTo("failure") == 0)
 				{
 					System.out.println("join failure confirmed");
 					game.setIsConnected(false);
@@ -70,14 +70,14 @@ public class ProtocolClient extends GameConnectionClient {
 			}
 
 			// Handle BYE message
-			if (messageTokens[0].compareTo("bye") == 0)
+			else if (messageTokens[0].compareTo("bye") == 0)
 			{ 
 				UUID ghostID = UUID.fromString(messageTokens[1]);
 				ghostManager.removeGhostAvatar(ghostID);
 			}
 
 			// Handle CREATE message and DETAILS_FOR message
-			if (messageTokens[0].compareTo("create") == 0 || (messageTokens[0].compareTo("dsfr") == 0))
+			else if (messageTokens[0].compareTo("create") == 0 || (messageTokens[0].compareTo("dsfr") == 0))
 			{ 
 				UUID ghostID = UUID.fromString(messageTokens[1]);
 
@@ -98,14 +98,14 @@ public class ProtocolClient extends GameConnectionClient {
 			}
 
 			// Handle WANTS_DETAILS message
-			if (messageTokens[0].compareTo("wsds") == 0)
+			else if (messageTokens[0].compareTo("wsds") == 0)
 			{
 				UUID ghostID = UUID.fromString(messageTokens[1]);
 				sendDetailsForMessage(ghostID, game.getPlayerPosition(), game.getPlayerLookAt(), game.getAvatarSelection());
 			}
 
 			// Handle MOVE message
-			if (messageTokens[0].compareTo("move") == 0)
+			else if (messageTokens[0].compareTo("move") == 0)
 			{
 				UUID ghostID = UUID.fromString(messageTokens[1]);
 
@@ -118,7 +118,7 @@ public class ProtocolClient extends GameConnectionClient {
 			}
 
 			// Handle CREATE_NPC message
-			if (messageTokens[0].compareTo("createnpc") == 0)
+			else if (messageTokens[0].compareTo("createnpc") == 0)
 			{
 				Log.debug("creating npc\n");
 				Vector3f npcPosition = new Vector3f(Float.parseFloat(messageTokens[1]),
@@ -131,12 +131,12 @@ public class ProtocolClient extends GameConnectionClient {
 					npcManager.createNpcAvatar(npcPosition, lookat);
 				} catch (IOException e)
 				{
-					System.out.println("error creating ghost avatar");
+					System.out.println("error creating npc avatar");
 				}
 			}
 
 			// Handle GET_NPC_TARGETS message
-			if (messageTokens[0].compareTo("getnpctargets") == 0)
+			else if (messageTokens[0].compareTo("getnpctargets") == 0)
 			{
 				Log.debug("getting npc targets\n");
 				ArrayList<Vector2f> targets = game.getNpcTargets();
@@ -145,16 +145,12 @@ public class ProtocolClient extends GameConnectionClient {
 			}
 
 			// Handle NPC_STATUS message
-			if (messageTokens[0].compareTo("npcstatus") == 0)
+			else if (messageTokens[0].compareTo("npcstatus") == 0)
 			{
 				// Vector3f position = new Vector3f(Float.parseFloat(messageTokens[1]), Float.parseFloat(messageTokens[2]),
 				// 		Float.parseFloat(messageTokens[3]));
 				// Vector3f lookat = new Vector3f(Float.parseFloat(messageTokens[4]), Float.parseFloat(messageTokens[5]),
 				// 		Float.parseFloat(messageTokens[6]));
-				// boolean wantsAccel = Boolean.parseBoolean(messageTokens[7]);
-				// boolean wantsDecel = Boolean.parseBoolean(messageTokens[8]);
-				// boolean wantsTurnLeft = Boolean.parseBoolean(messageTokens[9]);
-				// boolean wantsTurnRight = Boolean.parseBoolean(messageTokens[10]);
 				boolean wantsAccel = messageTokens[7].equals("1");
 				boolean wantsDecel = messageTokens[8].equals("1");
 				boolean wantsTurnLeft = messageTokens[9].equals("1");
@@ -163,15 +159,20 @@ public class ProtocolClient extends GameConnectionClient {
 				npcManager.updateNpcStatus(wantsAccel, wantsDecel, wantsTurnLeft, wantsTurnRight);
 			}
 
-			if (messageTokens[0].compareTo("npcmove") == 0)
+			else if (messageTokens[0].compareTo("npcmove") == 0)
 			{
-				Log.debug("handling npc move\n");
+				// Log.print("handling npc move\n");
 				Vector3f position = new Vector3f(Float.parseFloat(messageTokens[1]),
 						Float.parseFloat(messageTokens[2]), Float.parseFloat(messageTokens[3]));
 				Vector3f lookat = new Vector3f(Float.parseFloat(messageTokens[4]), Float.parseFloat(messageTokens[5]),
 						Float.parseFloat(messageTokens[6]));
 				
 				npcManager.updateNpcAvatar(position, lookat);
+			}
+
+			else 
+			{
+				Log.print("Uknown command: %s\n", strMessage);
 			}
 		}
 	}
