@@ -24,7 +24,7 @@ public class NpcAvatar extends GameObject{
 		engineSound.setMaxDistance(50.0f);
 		engineSound.setMinDistance(3.0f);
 		engineSound.setRollOff(2.0f);
-		// engineSound.play(80, true);
+		engineSound.play(80, true);
 		setPosition(p);
 		wantsAccel = false;
 		wantsDecel = false;
@@ -52,5 +52,15 @@ public class NpcAvatar extends GameObject{
 	public void stopSounds()
 	{
 		engineSound.release(audioMgr);
+	}
+
+	public void setVolume(int volume)
+	{
+		engineSound.setVolume(volume);
+	}
+
+	public void updateSounds()
+	{
+		engineSound.setLocation(getWorldLocation());
 	}
 }

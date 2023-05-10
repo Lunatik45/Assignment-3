@@ -27,6 +27,7 @@ import javax.swing.JPanel;
 import javax.swing.JRadioButton;
 import javax.swing.UIManager;
 
+import net.java.games.input.Event;
 import net.java.games.input.Component.Identifier;
 
 import org.joml.Math;
@@ -126,11 +127,9 @@ public class MyGame extends VariableFrameRateGame {
 	private boolean isFalling = false, updateScriptInRuntime;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
-	private double startTime, prevTime, elapsedTime, amt;
+	private double startTime, prevTime, elapsedTime, amt, volume = 1;
 	private float elapsed;
-	private int lakeIslands;
-	private int maxSpeed;
-	private int passes = 0;
+	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0;
 	private int serverPort;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP;
@@ -592,7 +591,6 @@ public class MyGame extends VariableFrameRateGame {
 			wheel.rollInfluence = 0.1f;
 		}
 
-
 		translation = new Matrix4f(terrain.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
 		float[] test = { 1000f, 0.75f, 1000f };
@@ -609,6 +607,8 @@ public class MyGame extends VariableFrameRateGame {
 		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
+		IncreaseVolume increaseVolume = new IncreaseVolume();
+		DecreaseVolume decreaseVolume = new DecreaseVolume();
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
@@ -621,6 +621,8 @@ public class MyGame extends VariableFrameRateGame {
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCamaraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key.O, increaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key.L, decreaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	}
 
 	@Override
@@ -643,13 +645,13 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void update()
 	{
-		Matrix4f currentTranslation, currentRotation;
-		double totalTime = System.currentTimeMillis() - startTime;
+		// Matrix4f currentTranslation, currentRotation;
+		// double totalTime = System.currentTimeMillis() - startTime;
 		elapsedTime = System.currentTimeMillis() - prevTime;
 		prevTime = System.currentTimeMillis();
 		elapsed = (float) (elapsedTime / 1000.0);
-		amt = elapsedTime * 0.03;
-		double amtt = totalTime * 0.001;
+		// amt = elapsedTime * 0.03;
+		// double amtt = totalTime * 0.001;
 
 		vehicle.setSteeringValue(vehicle.getSteeringValue(0) * 0.95f, 0);
 		vehicle.setSteeringValue(vehicle.getSteeringValue(1) * 0.95f, 1);
@@ -695,20 +697,17 @@ public class MyGame extends VariableFrameRateGame {
 		}
 
 		// build and set HUD
+		speed = vehicle.getCurrentSpeedKmHour();
 		String speedString = String.format("Speed: %.2f", speed);
 		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
 
-		vehicle.applyEngineForce(0, 2);
-		vehicle.applyEngineForce(0, 3);
+		// vehicle.applyEngineForce(0, 2);
+		// vehicle.applyEngineForce(0, 3);
 
 		// update inputs and camera
-		// stoppingForce(elapsed);
-		// applyGravity(elapsed);
 		im.update(elapsed);
 		updatePosition();
 		updateNpc(elapsed);
-		// positionCameraBehindAvatar();
-		// updatePosition();
 		processNetworking(elapsed);
 
 		if (updateScriptInRuntime)
@@ -745,7 +744,7 @@ public class MyGame extends VariableFrameRateGame {
 		bgSound = new Sound(bgMusicResource, SoundType.SOUND_MUSIC, 100, true);
 		bgSound.initialize(audioMgr);
 		bgSound.setRollOff(0.0f);
-		// bgSound.play(40, true);
+		bgSound.play(getBgVolume(), true);
 
 		engineResource = audioMgr.createAudioResource("assets/sounds/engine-6000.wav", AudioResourceType.AUDIO_SAMPLE);
 		engineSound = new Sound(engineResource, SoundType.SOUND_EFFECT, 100, true);
@@ -754,7 +753,7 @@ public class MyGame extends VariableFrameRateGame {
 		engineSound.setMinDistance(3.0f);
 		engineSound.setRollOff(2.0f);
 		engineSound.setLocation(getPlayerPosition());
-		// engineSound.play(80, true);
+		engineSound.play(getEngVolume(), true);
 
 		updateEar();
 	}
@@ -763,7 +762,9 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		updateEar();
 		engineSound.setLocation(getPlayerPosition());
-		engineSound.setPitch((float) (1 + (speed / maxSpeed) * 1.2));
+		npcManager.updateSounds();
+		
+		// Ghost manager updates sound every server update
 	}
 
 	public Sound getNewEngineSound()
@@ -782,6 +783,22 @@ public class MyGame extends VariableFrameRateGame {
 		audioMgr.getEar().setOrientation(mainCamera.getN(), mainCamera.getV());
 	}
 
+	public int getBgVolume()
+	{
+		return (int) (maxVolBG * volume);
+	}
+
+	public int getEngVolume()
+	{
+		return (int) (maxVolEng * volume);
+	}
+
+	public void updateVolume()
+	{
+		npcManager.updateVolume();
+		ghostManager.updateVolume();
+	}
+
 	// --------- NPC Section --------
 
 	private void updateNpc(float time)
@@ -794,62 +811,7 @@ public class MyGame extends VariableFrameRateGame {
 		NpcAvatar npc = npcManager.getNpc();
 		PhysicsObject po = npc.getPhysicsObject();
 		RaycastVehicle v = physicsEngine.getVehicle(po.getUID());
-		// double npcSpeed = npc.speed;
-
-		// Vector3f pos = npc.getWorldLocation();
-		// float floor = terrain.getHeight(pos.x, pos.z);
-		// pos.y = floor - npc.getShape().getLowestVertexY() * 0.25f;
-		// npc.setLocalLocation(pos);
-
-		// npcSpeed -= time * stoppingForce;
-
-		// if (npcSpeed < 0)
-		// {
-		// npcSpeed = 0;
-		// }
-
-		// if (npc.wantsAccel)
-		// {
-		// npcSpeed += time * acceleration;
-
-		// if (npcSpeed > maxSpeed)
-		// {
-		// npcSpeed = maxSpeed;
-		// }
-		// } else if (npc.wantsDecel)
-		// {
-		// npcSpeed -= time * deceleration;
-
-		// if (npcSpeed < 0)
-		// {
-		// npcSpeed = 0;
-		// }
-		// }
-
-		// if (npc.wantsTurnLeft)
-		// {
-		// npcSpeed += npcSpeed == 0 ? 0.1 : 0;
-		// double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst;
-		// npc.worldYaw((float) yaw);
-		// } else if (npc.wantsTurnRight)
-		// {
-		// npcSpeed += npcSpeed == 0 ? 0.1 : 0;
-		// double yaw = time * turnCoef * (npcSpeed / maxSpeed) + turnConst * -1;
-		// npc.worldYaw((float) yaw);
-		// }
-
-		// npc.speed = npcSpeed;
-		// float pitch = (float) npcSpeed;
-		// npc.setSoundPitch(pitch);
-
-		// Vector3f oldPosition = npc.getWorldLocation();
-		// Vector4f fwdDirection = new Vector4f(0f, 0f, 1f, 1f);
-		// fwdDirection.mul(npc.getWorldRotation());
-		// fwdDirection.mul((float) (npcSpeed * 0.1));
-		// Vector3f newPosition = oldPosition.add(fwdDirection.x(), fwdDirection.y(),
-		// fwdDirection.z());
-		// npc.setLocalLocation(newPosition);
-
+		
 		if (npc.wantsAccel)
 		{
 			v.applyEngineForce(2000, 2);
@@ -928,81 +890,81 @@ public class MyGame extends VariableFrameRateGame {
 		return maxSpeed;
 	}
 
-	public void accelerate(float time)
-	{
-		if (isFalling)
-		{
-			return;
-		}
+	// public void accelerate(float time)
+	// {
+	// 	if (isFalling)
+	// 	{
+	// 		return;
+	// 	}
 
-		speed += time * acceleration;
+	// 	speed += time * acceleration;
 
-		if (speed > maxSpeed)
-		{
-			speed = maxSpeed;
-		}
-	}
+	// 	if (speed > maxSpeed)
+	// 	{
+	// 		speed = maxSpeed;
+	// 	}
+	// }
 
-	public void decelerate(float time)
-	{
-		if (isFalling)
-		{
-			return;
-		}
+	// public void decelerate(float time)
+	// {
+	// 	if (isFalling)
+	// 	{
+	// 		return;
+	// 	}
 
-		speed -= time * deceleration;
+	// 	speed -= time * deceleration;
 
-		if (speed < 0)
-		{
-			speed = 0;
-		}
+	// 	if (speed < 0)
+	// 	{
+	// 		speed = 0;
+	// 	}
 
-		// brakeApplied = true;
-	}
+	// 	// brakeApplied = true;
+	// }
 
-	private void stoppingForce(float time)
-	{
-		speed -= time * stoppingForce;
+	// private void stoppingForce(float time)
+	// {
+	// 	speed -= time * stoppingForce;
 
-		if (speed < 0)
-		{
-			speed = 0;
-		}
-	}
+	// 	if (speed < 0)
+	// 	{
+	// 		speed = 0;
+	// 	}
+	// }
 
-	private void applyGravity(float time)
-	{
-		Vector3f pos = avatar.getWorldLocation();
+	// private void applyGravity(float time)
+	// {
+	// 	Vector3f pos = avatar.getWorldLocation();
 
-		// Little trick to get the bottom of the obj to be on the ground
-		pos.y += avatar.getShape().getLowestVertexY() * 0.25f;
-		float floor = terrain.getHeight(pos.x, pos.z);
+	// 	// Little trick to get the bottom of the obj to be on the ground
+	// 	pos.y += avatar.getShape().getLowestVertexY() * 0.25f;
+	// 	float floor = terrain.getHeight(pos.x, pos.z);
 
-		if (pos.y > floor)
-		{
-			isFalling = true;
-			gravitySpeed += time * gravity;
-			pos.y -= gravitySpeed;
+	// 	if (pos.y > floor)
+	// 	{
+	// 		isFalling = true;
+	// 		gravitySpeed += time * gravity;
+	// 		pos.y -= gravitySpeed;
 
-			if (pos.y <= floor)
-			{
-				pos.y = floor;
-				isFalling = false;
-				gravitySpeed = 0;
-				pos.y = floor;
-			}
+	// 		if (pos.y <= floor)
+	// 		{
+	// 			pos.y = floor;
+	// 			isFalling = false;
+	// 			gravitySpeed = 0;
+	// 			pos.y = floor;
+	// 		}
 
-			pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
-			avatar.setLocalLocation(pos);
-		}
+	// 		pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
+	// 		avatar.setLocalLocation(pos);
+	// 	}
 
-		else if (pos.y < floor)
-		{
-			pos.y = floor - avatar.getShape().getLowestVertexY() * 0.25f;
-			avatar.setLocalLocation(pos);
-			isFalling = false;
-		}
-	}
+	// 	else if (pos.y < floor)
+	// 	{
+	// 		pos.y = floor - avatar.getShape().getLowestVertexY() * 0.25f;
+	// 		avatar.setLocalLocation(pos);
+	// 		isFalling = false;
+	// 	}
+	// }
 
 	private void updatePosition()
 	{
@@ -1376,6 +1338,30 @@ public class MyGame extends VariableFrameRateGame {
 		public void performAction(float time, net.java.games.input.Event evt)
 		{
 			myGame.toggleCamara();
+		}
+	}
+
+	private class DecreaseVolume extends AbstractInputAction {
+		@Override
+		public void performAction(float time, Event evt)
+		{
+			if (volume > 0)
+			{
+				volume -= 0.1;
+				updateVolume();
+			}
+		}
+	}
+
+	private class IncreaseVolume extends AbstractInputAction {
+		@Override
+		public void performAction(float time, Event evt)
+		{
+			if (volume < 1)
+			{
+				volume += 0.1;
+				updateVolume();
+			}
 		}
 	}
 

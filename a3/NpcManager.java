@@ -29,6 +29,7 @@ public class NpcManager {
 		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		// npc.setLocalScale(initialScale);
 		npc.lookAt(lookat);
+		npc.setVolume(game.getEngVolume());
 		Log.trace("NPC created\n");
 	}
 
@@ -65,5 +66,19 @@ public class NpcManager {
 		}
 	}
 
+	public void updateVolume()
+	{
+		if (npc != null)
+		{
+			npc.setVolume(game.getEngVolume());
+		}
+	}
 
+	public void updateSounds()
+	{
+		if (npc != null)
+		{
+			npc.updateSounds();
+		}
+	}
 }
