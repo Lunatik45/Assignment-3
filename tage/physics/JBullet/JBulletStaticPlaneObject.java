@@ -1,6 +1,7 @@
 package tage.physics.JBullet;
 
 import com.bulletphysics.collision.shapes.StaticPlaneShape;
+import com.bulletphysics.collision.shapes.ConcaveShape;
 import javax.vecmath.Vector3f;
 
 public class JBulletStaticPlaneObject extends JBulletPhysicsObject {

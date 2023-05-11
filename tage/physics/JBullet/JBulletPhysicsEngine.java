@@ -313,7 +313,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 	
 			//Disable Deactivation
 			vehicle.getRigidBody().setActivationState(CollisionObject.DISABLE_DEACTIVATION);
-			
+			vehicle.getRigidBody().setGravity(new Vector3f(0f,-9f,0f));
 			dynamicsWorld.addVehicle(vehicle);
 			vehicles.put(uid, vehicle);
 			vehicleTunings.put(uid, myVehicleTuning);
