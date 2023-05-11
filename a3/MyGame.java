@@ -98,7 +98,7 @@ public class MyGame extends VariableFrameRateGame {
 	private File scriptFile;
 	private ArrayList<GameObject> stationary, dynamic;
 	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, trafficCone, myRoad, frontRW,
-			frontLW, backRW, backLW;
+			frontLW, backRW, backLW, waypoint;
 	private GhostManager ghostManager;
 	private IAudioManager audioMgr;
 	private InputManager im;
@@ -106,7 +106,7 @@ public class MyGame extends VariableFrameRateGame {
 	private ObjShape ghostShape, dolphinShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S,
 			trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape,
 			building1Shape, building2Shape, building3Shape, building4Shape, trafficB3Shape, trafficB2Shape,
-			trafficB1Shape;;
+			trafficB1Shape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private Robot robot;
@@ -120,16 +120,18 @@ public class MyGame extends VariableFrameRateGame {
 	private TextureImage terrainHeightMap1, terrainHeightMap2, terrainHeightMap3, terrainHeightMap4;
 	private NpcManager npcManager;
 	private RaycastVehicle vehicle, npcVehicle;
+	private ArrayList<Vector2f> targets;
+	private Vector3f targetPos;
 
 	private boolean isClientConnected = false, isNpcHandler = false;
 
 	private float vals[] = new float[16];
-	private boolean isFalling = false, updateScriptInRuntime;
+	private boolean isFalling = false, updateScriptInRuntime, newTarget = true;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime, amt, volume = 1;
-	private float elapsed;
-	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0;
+	private float elapsed, targetMargin = 2;
+	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0, target = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP;
@@ -366,41 +368,43 @@ public class MyGame extends VariableFrameRateGame {
 		stationary.add(newObj);
 
 		// Add objects that have potential to be dynamic (physics)
-		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
-		dynamic.add(newObj);
+		// newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		// dynamic.add(newObj);
 
-		newObj = new GameObject(GameObject.root(), trafficB2Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
-		dynamic.add(newObj);
+		// newObj = new GameObject(GameObject.root(), trafficB2Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		// dynamic.add(newObj);
 
-		newObj = new GameObject(GameObject.root(), trafficB1Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
-		dynamic.add(newObj);
+		// newObj = new GameObject(GameObject.root(), trafficB1Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 0.0f));
+		// dynamic.add(newObj);
 
-		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, 25f));
-		dynamic.add(newObj);
+		// newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, 25f));
+		// dynamic.add(newObj);
 
-		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(-25f, 0.0f, 25f));
-		dynamic.add(newObj);
+		// newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(-25f, 0.0f, 25f));
+		// dynamic.add(newObj);
 
-		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(-25f, 0.0f, -25f));
-		dynamic.add(newObj);
+		// newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(-25f, 0.0f, -25f));
+		// dynamic.add(newObj);
 
-		newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.25f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, -25f));
-		dynamic.add(newObj);
-		// avatar.getRenderStates().setWireframe(true);
+		// newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, -25f));
+		// dynamic.add(newObj);
+		
+		waypoint = new GameObject(GameObject.root(), trafficB1Shape, trafficTex);
+		waypoint.setLocalScale((new Matrix4f()).scale(0.25f));
 
 
 		backRW = new GameObject(avatar, backRWShape, boxCarTex);
@@ -477,6 +481,8 @@ public class MyGame extends VariableFrameRateGame {
 		engine.getRenderSystem().setWindowDimensions(1900, 1000);
 		engine.getRenderSystem().setLocationRelativeTo(null);
 		mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
+
+		setupTargets();
 
 		setupNetworking();
 
@@ -601,6 +607,7 @@ public class MyGame extends VariableFrameRateGame {
 		// terrainP.setBounciness(0.0f);
 		terrain.setPhysicsObject(terrainP);
 
+
 		// initMouseMode();
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
@@ -706,6 +713,14 @@ public class MyGame extends VariableFrameRateGame {
 		// vehicle.applyEngineForce(0, 2);
 		// vehicle.applyEngineForce(0, 3);
 
+		if (newTarget)
+		{
+			Vector2f t = targets.get(target);
+			targetPos = new Vector3f(t.x, -0.5f, t.y);
+			waypoint.setLocalLocation(targetPos);
+			newTarget = false;
+		}
+
 		// update inputs and camera
 		im.update(elapsed);
 		updatePosition();
@@ -729,6 +744,60 @@ public class MyGame extends VariableFrameRateGame {
 			orbitController.updateCameraPosition();
 		}
 		updateSounds();
+	}
+
+	// --------- Target Section --------
+	private void setupTargets()
+	{
+		targets = new ArrayList<>();
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(30, 30));
+		targets.add(new Vector2f(30, -30));
+		targets.add(new Vector2f(-30, -30));
+		targets.add(new Vector2f(-30, 30));
 	}
 
 	// --------- Audio Section --------
@@ -828,10 +897,10 @@ public class MyGame extends VariableFrameRateGame {
 			v.applyEngineForce(0, 3);
 		}
 
-		if ((npc.wantsTurnLeft || npc.wantsTurnRight) && v.getCurrentSpeedKmHour() < 2)
+		if ((npc.wantsTurnLeft || npc.wantsTurnRight) && v.getCurrentSpeedKmHour() < 5)
 		{
-			v.applyEngineForce(400, 2);
-			v.applyEngineForce(400, 3);
+			v.applyEngineForce(600, 2);
+			v.applyEngineForce(600, 3);
 			v.setBrake(0, 2);
 			v.setBrake(0, 3);
 		}
@@ -970,6 +1039,12 @@ public class MyGame extends VariableFrameRateGame {
 
 	private void updatePosition()
 	{
+		if (avatar.getLocalLocation().distance(targetPos) < targetMargin)
+		{
+			target++;
+			newTarget = true;
+		}
+
 		protocolClient.sendMoveMessage(avatar.getWorldLocation(), getLookAt(avatar), engineSound.getPitch());
 	}
 
@@ -1272,56 +1347,6 @@ public class MyGame extends VariableFrameRateGame {
 
 	public ArrayList<Vector2f> getNpcTargets()
 	{
-		ArrayList<Vector2f> targets = new ArrayList<>();
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-
 		return targets;
 	}
 
