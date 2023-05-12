@@ -169,9 +169,9 @@ public class SpringCameraController {
 			if (distance < 0.3f)
 			{
 				distance = 0.3f;
-			} else if (distance > 3f)
+			} else if (distance > 2.75f)
 			{
-				distance = 3f;
+				distance = 2.75f;
 			}
 		}
 	}

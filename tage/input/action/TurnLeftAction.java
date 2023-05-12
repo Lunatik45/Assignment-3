@@ -49,6 +49,7 @@ public class TurnLeftAction extends AbstractInputAction {
 		vehicle.setSteeringValue(-steer * 0.5f, 2);
 		vehicle.setSteeringValue(-steer * 0.5f, 3);
 
+		steer = 0.0f;
 
 		// float keyValue = e.getValue();
 		// if (keyValue > -.2 && keyValue < .2)
