@@ -131,7 +131,7 @@ public class MyGame extends VariableFrameRateGame {
 	private boolean isFalling = false, updateScriptInRuntime, newTarget = true;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
-	private double startTime, prevTime, elapsedTime, amt, volume = 1;
+	private double startTime, prevTime, elapsedTime, amt, volume = 1, totalTime;
 	private float elapsed, targetMargin = 2;
 	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0, target = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
@@ -336,10 +336,10 @@ public class MyGame extends VariableFrameRateGame {
 		// // terrain.getRenderStates().setWireframe(true);
 		// terrain.setHeightMap(terrainHeightMap);
 
-		float heightOffGround = -avatarAS.getLowestVertexY();
+		// float heightOffGround = -avatarAS.getLowestVertexY();
 		avatar = new GameObject(GameObject.root(), avatarAS, avatarTex);
-		avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
-		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
+		// avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
+		// avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
 
 		// Template:
 		// newObj = new GameObject(GameObject.root(), shape, tex);
@@ -572,7 +572,7 @@ public class MyGame extends VariableFrameRateGame {
 		DecelAction decelAction = new DecelAction(this, vehicle, protocolClient);
 		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
-		ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
+		// ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
 		IncreaseVolume increaseVolume = new IncreaseVolume();
 		DecreaseVolume decreaseVolume = new DecreaseVolume();
 		ToggleAnimationType toggleAnimationType = new ToggleAnimationType(this);
@@ -589,7 +589,7 @@ public class MyGame extends VariableFrameRateGame {
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.O, increaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key.L, decreaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCameraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		// im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCameraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key._3, toggleAnimationType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	}
 
@@ -619,7 +619,7 @@ public class MyGame extends VariableFrameRateGame {
 		prevTime = System.currentTimeMillis();
 		elapsed = (float) (elapsedTime / 1000.0);
 		amt = elapsedTime * 0.03;
-		double amtt = totalTime * 0.001;
+		// double amtt = totalTime * 0.001;
 		
 		// Turn off
 		System.out.println(vehicle.getCurrentSpeedKmHour());

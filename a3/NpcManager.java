@@ -26,7 +26,7 @@ public class NpcManager {
 		TextureImage t = game.getAvatarTex("CarTextureWhite.png");
 		npc = new NpcAvatar(s, t, position, lookat, game.getNewEngineSound(), game.getAudioManager());
 		npc.setPhysicsObject(game.getNpcPhysicsObject());
-		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
+		// Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
 		// npc.setLocalScale(initialScale);
 		// npc.lookAt(lookat);
 		npc.setVolume(game.getEngVolume());
