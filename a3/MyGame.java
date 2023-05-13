@@ -29,19 +29,15 @@ import javax.swing.UIManager;
 
 import net.java.games.input.Component.Identifier;
 
-import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector2f;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.joml.AxisAngle4f;
 
-import com.bulletphysics.collision.shapes.ScalarType;
-import com.bulletphysics.dynamics.constraintsolver.HingeConstraint;
 import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
-import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
 import com.bulletphysics.dynamics.vehicle.VehicleTuning;
-import com.bulletphysics.dynamics.vehicle.WheelInfo;
+import com.bulletphysics.linearmath.Transform;
 
 import tage.audio.AudioManagerFactory;
 import tage.audio.AudioResource;
@@ -97,7 +93,7 @@ public class MyGame extends VariableFrameRateGame {
 	private SpringCameraController springController;
 	private File scriptFile;
 	private ArrayList<GameObject> stationary, dynamic;
-	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, trafficCone, myRoad, frontRW,
+	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, tcBarrier1, tcBarrier2, tcBarrier3, tcBarrier4, myRoad, frontRW,
 			frontLW, backRW, backLW;
 	private AnimatedShape avatarAS;
 	private GhostManager ghostManager;
@@ -352,9 +348,10 @@ public class MyGame extends VariableFrameRateGame {
 		newObj.setLocalTranslation((new Matrix4f()).translate(-4.0f, 0.0f, 0.0f));
 		stationary.add(newObj);
 
+		// Only stationary obj with a physics object aside from the map boundaries
 		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
 		// newObj.setLocalScale((new Matrix4f()).scale(0.5f));
-		// newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, -1.0f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(0f, -1f, 0f));
 		stationary.add(newObj);
 
 		newObj = new GameObject(GameObject.root(), building3Shape, building3Tex);
@@ -413,8 +410,24 @@ public class MyGame extends VariableFrameRateGame {
 		myRoad.getRenderStates().setTiling(1);
 		myRoad.setLocalTranslation((new Matrix4f()).translate(0.0f, 0f, 0.0f));
 
-		trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
-		trafficCone.setLocalTranslation((new Matrix4f()).translate(1.0f, 0.215f, 1.0f));
+		// trafficCone = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		// trafficCone.setLocalTranslation((new Matrix4f()).translate(1.0f, 0.215f, 1.0f));
+
+		tcBarrier1 = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		tcBarrier1.setLocalScale((new Matrix4f()).scale(0.01f));
+		tcBarrier1.setLocalTranslation((new Matrix4f()).translate(0f, -100.0f, 0f));
+
+		tcBarrier2 = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		tcBarrier2.setLocalScale((new Matrix4f()).scale(0.01f));
+		tcBarrier2.setLocalTranslation((new Matrix4f()).translate(0f, -100.0f, 0f));
+
+		tcBarrier3 = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		tcBarrier3.setLocalScale((new Matrix4f()).scale(0.01f));
+		tcBarrier3.setLocalTranslation((new Matrix4f()).translate(0f, -100.0f, 0f));
+
+		tcBarrier4 = new GameObject(GameObject.root(), trafficConeShape, trafficConeTex);
+		tcBarrier4.setLocalScale((new Matrix4f()).scale(0.01f));
+		tcBarrier4.setLocalTranslation((new Matrix4f()).translate(0f, -100.0f, 0f));
 
 		// terrain = new GameObject(GameObject.root(), terrainShape);
 		// terrain.getRenderStates().setWireframe(true);
@@ -492,7 +505,7 @@ public class MyGame extends VariableFrameRateGame {
 		float[] gravity = { 0f, -9.8f, 0f };
 		physicsEngine = PhysicsEngineFactory.createPhysicsEngine(physEngine);
 		physicsEngine.initSystem();
-		// physicsEngine.setGravity(gravity);
+		physicsEngine.setGravity(gravity);
 
 		// Used to see boxShape
 		(engine.getSceneGraph()).setPhysicsDebugEnabled(true);
@@ -503,15 +516,16 @@ public class MyGame extends VariableFrameRateGame {
 		float chassisMass = 1500.0f;
 		float up[] = { 0, 1, 0 };
 		double[] tempTransform, npcTransform;
-		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
+		Matrix4f translation = new Matrix4f(avatar.getWorldTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		translation = new Matrix4f().translation(5, 0, 5);
-		npcTransform = toDoubleArray(translation.get(vals));
+		// translation = new Matrix4f().translation(5, 1, 5);
+		// npcTransform = toDoubleArray(translation.get(vals));
+
 		// float[] chassisHalfExtens = {0.316f, 0.251f, 0.575f};
 		float[] chassisHalfExtens = { 1f, 0.5f, 2f };
 		avatarP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, tempTransform,
 				chassisHalfExtens);
-		npcP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, npcTransform, chassisHalfExtens);
+		// npcP = physicsEngine.addVehicleObject(physicsEngine.nextUID(), chassisMass, npcTransform, chassisHalfExtens);
 
 		avatar.setPhysicsObject(avatarP);
 
@@ -525,16 +539,22 @@ public class MyGame extends VariableFrameRateGame {
 		physicsEngine.addWheels(vehicle, tuning, chassisHalfExtens, wheelRadius, connectionHeight, wheelWidth);
 
 		// Crude implimentation for NPC physics
-		npcVehicle = physicsEngine.getVehicle(npcP.getUID());
-		VehicleTuning npcTuning = physicsEngine.getVehicleTuning(npcP.getUID());
+		// npcVehicle = physicsEngine.getVehicle(npcP.getUID());
+		// VehicleTuning npcTuning = physicsEngine.getVehicleTuning(npcP.getUID());
 		
-		physicsEngine.addWheels(npcVehicle, npcTuning, chassisHalfExtens, wheelRadius, connectionHeight, wheelWidth);
+		// physicsEngine.addWheels(npcVehicle, npcTuning, chassisHalfExtens, wheelRadius, connectionHeight, wheelWidth);
 
 		translation = new Matrix4f(myRoad.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
 		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
 		// terrainP.setFriction(1.0f);
-		float [] planeSize = {1000f, 1.0f , 1000f};
+
+		translation = new Matrix4f();
+		tempTransform = toDoubleArray(translation.get(vals));
+		float [] planeSize = {2000, 1f , 2000f};
+		com.bulletphysics.linearmath.Transform moveTo = new com.bulletphysics.linearmath.Transform();
+        moveTo.setIdentity();
+        moveTo.origin.set(0, -1, 0);
 		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, planeSize);
 		myRoad.setPhysicsObject(terrainP);
 		terrainP.setFriction(0.25f);
@@ -548,15 +568,55 @@ public class MyGame extends VariableFrameRateGame {
 		// trafficConeP.setBounciness(0.4f);
 		// initMouseMode();
 
+		
+		// Setting up map barriers
+		translation = new Matrix4f();
+		tempTransform = toDoubleArray(translation.get(vals));
+		float[] barrierSize1 = { 2000f, 40.0f, 1.0f }; // wide along the x axis, placement altered along z axis
+		float[] barrierSize2 = { 1f, 40.0f, 1998.0f }; // wide along the z axis, placement altered along x axis
+		moveTo = new com.bulletphysics.linearmath.Transform();
+        moveTo.setIdentity();
+        moveTo.origin.set(1000f, 10f, 0f);
+		tcBarrier1.setPhysicsObject(physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
+		barrierSize2, moveTo));
+
+		translation = new Matrix4f();
+		tempTransform = toDoubleArray(translation.get(vals));
+		moveTo = new com.bulletphysics.linearmath.Transform();
+        moveTo.setIdentity();
+        moveTo.origin.set(1f, 20.0f, -1000f);
+		tcBarrier2.setPhysicsObject(physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
+		barrierSize1, moveTo));
+
+		translation = new Matrix4f();
+		tempTransform = toDoubleArray(translation.get(vals));
+		moveTo = new com.bulletphysics.linearmath.Transform();
+        moveTo.setIdentity();
+        moveTo.origin.set(-1000.0f, 20.0f, 1.0f);
+		tcBarrier3.setPhysicsObject(physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
+		barrierSize2, moveTo));
+
+		translation = new Matrix4f();
+		tempTransform = toDoubleArray(translation.get(vals));
+		moveTo = new com.bulletphysics.linearmath.Transform();
+        moveTo.setIdentity();
+        moveTo.origin.set(1f, 20.0f, 1000f);
+		tcBarrier4.setPhysicsObject(physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
+		barrierSize1, moveTo));
 
 		// Building 2 phys obj
-		// GameObject tempObj = stationary.get(1); //building2
-		// translation = new Matrix4f(tempObj.getLocalTranslation());
-		// tempTransform = toDoubleArray(translation.get(vals));
-		// float[] building2HalfExtens = { 60.0f, 55.0f, 30.0f };
-		// building2P =  physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
-		// 		building2HalfExtens);
-		// tempObj.setPhysicsObject(building2P);
+		GameObject tempObj = stationary.get(1); //building2
+		// tempObj.getRenderStates().setWireframe(true);
+		translation = new Matrix4f();
+		// translation.origin(new Vector3f(-139.08f, 7.5f, 24f));
+		tempTransform = toDoubleArray(translation.get(vals));
+		float[] barrier1Size = { 120.0f, 110.0f, 60.0f };
+		moveTo = new com.bulletphysics.linearmath.Transform();
+		moveTo.setIdentity();
+		moveTo.origin.set(-32.04f, 0f, 54.803f);
+		building2P =  physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
+				barrier1Size, moveTo);
+		tempObj.setPhysicsObject(building2P);
 
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
@@ -609,8 +669,11 @@ public class MyGame extends VariableFrameRateGame {
 		amt = elapsedTime * 0.03;
 		double amtt = totalTime * 0.001;
 		
+		com.bulletphysics.linearmath.Transform printTransform = new com.bulletphysics.linearmath.Transform();
+		vehicle.getChassisWorldTransform(printTransform);
+		
 		// Turn off
-		System.out.println(vehicle.getCurrentSpeedKmHour());
+		// System.out.println(vehicle.getCurrentSpeedKmHour());
 		if( vehicle.getCurrentSpeedKmHour() > 0f && !toggleAnimation){
 			toggleAnimation = !toggleAnimation;
 			avatarAS.stopAnimation();
@@ -647,7 +710,7 @@ public class MyGame extends VariableFrameRateGame {
 				PhysicsObject po = go.getPhysicsObject();
 
 				// Skip the code below and go to the next GameObject if the PO is null
-				if (po == null)
+				if (po == null || !po.isDynamic())
 					continue;
 
 				mat.set(toFloatArray(po.getTransform()));
@@ -668,8 +731,12 @@ public class MyGame extends VariableFrameRateGame {
 
 		// build and set HUD
 		String speedString = String.format("Speed: %.2f", speed);
-		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
-
+		speed = speed < 1 ? 0 : speed;
+		Vector3f pos = avatar.getWorldLocation();
+		String hud = String.format("Speed: %.2f", speed);
+		String p = String.format("x: %6.2f   y: %6.2f,   z: %6.2f", pos.x, pos.y, pos.z);
+		engine.getHUDmanager().setHUD1(hud, new Vector3f(1, 1, 1), 15, 15);
+		engine.getHUDmanager().setHUD2(p, new Vector3f(1, 1, 1), 200, 15);
 		vehicle.applyEngineForce(0, 2);
 		vehicle.applyEngineForce(0, 3);
 

@@ -139,6 +139,23 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		/**
 		 * Adds a {@link PhysicsObject} object of type Box to the physics world.
 		 */
+		public PhysicsObject addBoxObject(int uid, float mass, double[] transform, float[] size, Transform transform2) {
+			// PhysicsEngine asks for dimensions, JBullet uses halfExtents
+			float[] temp = new float[size.length];
+			for(int i = 0; i < size.length; i++)
+			{
+				temp[i] = size[i]/2f;
+			}
+			JBulletBoxObject boxObject = new JBulletBoxObject(uid, mass, transform, temp, transform2);
+			boxObject.getShape().setMargin(0.04f);
+			this.dynamicsWorld.addRigidBody(boxObject.getRigidBody());
+			this.objects.add(boxObject);
+			return boxObject;
+		}
+
+				/**
+		 * Adds a {@link PhysicsObject} object of type Box to the physics world.
+		 */
 		public PhysicsObject addBoxObject(int uid, float mass, double[] transform, float[] size) {
 			// PhysicsEngine asks for dimensions, JBullet uses halfExtents
 			float[] temp = new float[size.length];
@@ -147,6 +164,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 				temp[i] = size[i]/2f;
 			}
 			JBulletBoxObject boxObject = new JBulletBoxObject(uid, mass, transform, temp);
+			boxObject.getShape().setMargin(0.04f);
 			this.dynamicsWorld.addRigidBody(boxObject.getRigidBody());
 			this.objects.add(boxObject);
 			return boxObject;
@@ -313,7 +331,6 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 	
 			//Disable Deactivation
 			vehicle.getRigidBody().setActivationState(CollisionObject.DISABLE_DEACTIVATION);
-			vehicle.getRigidBody().setGravity(new Vector3f(0f,-9f,0f));
 			dynamicsWorld.addVehicle(vehicle);
 			vehicles.put(uid, vehicle);
 			vehicleTunings.put(uid, myVehicleTuning);
@@ -400,7 +417,7 @@ public class JBulletPhysicsEngine implements PhysicsEngine {
 		 */
 		public void update(float nanoseconds) {
 			if (dynamicsWorld != null) {
-				dynamicsWorld.stepSimulation(nanoseconds/1000f);//, 4, 1f/60f);
+				dynamicsWorld.stepSimulation(nanoseconds/1000f); // 1e39f, 4, 1f/60f);
 			}
 		}
 
