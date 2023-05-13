@@ -74,13 +74,20 @@ public class NPCController {
 
 	public Vector2f getNextTarget()
 	{
-		try
+		// try
+		// {
+		// 	return targets.get(target);
+		// } catch (IndexOutOfBoundsException e)
+		// {
+		// 	return targets.get(0);
+		// }
+		if (target >= targets.size())
 		{
-			return targets.get(target);
-		} catch (IndexOutOfBoundsException e)
-		{
-			return targets.get(0);
+			target = 0;
+			server.npcFinished();
 		}
+
+		return targets.get(target);
 	}
 
 	public void npcLoop()
@@ -94,17 +101,11 @@ public class NPCController {
 				float elapsedThinkMilliSecs = (currentTime - lastThinkUpdateTime) / (1000000.0f);
 				float elapsedTickMilliSecs = (currentTime - lastTickUpdateTime) / (1000000.0f);
 
-				// Think
-				if (elapsedThinkMilliSecs >= 1.0f)
+				// Think & tick
+				if (elapsedThinkMilliSecs >= 30.0f)
 				{
 					lastThinkUpdateTime = currentTime;
 					bt.update(elapsedThinkMilliSecs);
-				}
-
-				// Tick
-				if (elapsedTickMilliSecs >= 1.0f)
-				{
-					lastTickUpdateTime = currentTime;
 					server.sendNPCStatus(npc.getStatusMsg());
 				}
 			}

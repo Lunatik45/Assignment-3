@@ -43,6 +43,7 @@ import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 import com.bulletphysics.dynamics.vehicle.VehicleRaycaster;
 import com.bulletphysics.dynamics.vehicle.VehicleTuning;
 import com.bulletphysics.dynamics.vehicle.WheelInfo;
+import com.jogamp.opengl.math.Matrix4;
 
 import tage.audio.AudioManagerFactory;
 import tage.audio.AudioResource;
@@ -108,7 +109,7 @@ public class MyGame extends VariableFrameRateGame {
 	private ObjShape ghostShape, dolphinShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S,
 			trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape,
 			building1Shape, building2Shape, building3Shape, building4Shape, trafficB3Shape, trafficB2Shape,
-			trafficB1Shape;
+			trafficB1Shape, arrowShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private Robot robot;
@@ -118,15 +119,14 @@ public class MyGame extends VariableFrameRateGame {
 	private String serverAddress;
 	private TextureImage dolphinTex, ghostTex, terrainTex, trafficConeTex, boxCarTex, myRoadTex, avatarTex,
 			greenAvatarTex, redAvatarTex, blueAvatarTex, whiteAvatarTex, terrainHeightMap, building1Tex, building2Tex,
-			building3Tex, building4Tex, trafficTex;
+			building3Tex, building4Tex, trafficTex, arrowTex;
 	private TextureImage terrainHeightMap1, terrainHeightMap2, terrainHeightMap3, terrainHeightMap4;
 	private NpcManager npcManager;
 	private RaycastVehicle vehicle, npcVehicle;
 	private ArrayList<Vector2f> targets;
-	private Vector3f targetPos;
+	private Vector2f targetPos;
 
-	private boolean isClientConnected = false, isNpcHandler = false;
-
+	private boolean isClientConnected = false, isNpcHandler = false, race = false, racePrep = false, raceDone = false;
 	private float vals[] = new float[16];
 	private boolean isFalling = false, updateScriptInRuntime, newTarget = true;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
@@ -258,7 +258,7 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void loadShapes()
 	{
-		avatarAS = new AnimatedShape( "car.rkm", "car.rks");
+		avatarAS = new AnimatedShape("car.rkm", "car.rks");
 		avatarAS.loadAnimation("ACCEL", "car.rka");
 		ghostShape = new ImportedModel("box_car.obj");
 		dolphinShape = new ImportedModel("dolphinHighPoly.obj");
@@ -277,6 +277,7 @@ public class MyGame extends VariableFrameRateGame {
 		trafficB3Shape = new ImportedModel("TrafficBarricade3.obj");
 		trafficB2Shape = new ImportedModel("TrafficBarricade2.obj");
 		trafficB1Shape = new ImportedModel("TrafficBarricade1.obj");
+		arrowShape = new ImportedModel("arrow.obj");
 	}
 
 	@Override
@@ -311,6 +312,8 @@ public class MyGame extends VariableFrameRateGame {
 		building4Tex = new TextureImage("Building4.jpg");
 
 		trafficTex = new TextureImage("Traffic.jpg");
+
+		arrowTex = new TextureImage("arrow.png");
 	}
 
 	@Override
@@ -336,10 +339,10 @@ public class MyGame extends VariableFrameRateGame {
 		// // terrain.getRenderStates().setWireframe(true);
 		// terrain.setHeightMap(terrainHeightMap);
 
-		// float heightOffGround = -avatarAS.getLowestVertexY();
+		float heightOffGround = -avatarAS.getLowestVertexY();
 		avatar = new GameObject(GameObject.root(), avatarAS, avatarTex);
-		// avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
-		// avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
+		avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
+		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
 
 		// Template:
 		// newObj = new GameObject(GameObject.root(), shape, tex);
@@ -403,9 +406,9 @@ public class MyGame extends VariableFrameRateGame {
 		// newObj.setLocalScale((new Matrix4f()).scale(0.25f));
 		// newObj.setLocalTranslation((new Matrix4f()).translate(25f, 0.0f, -25f));
 		// dynamic.add(newObj);
-		
-		waypoint = new GameObject(GameObject.root(), trafficB1Shape, trafficTex);
-		waypoint.setLocalScale((new Matrix4f()).scale(0.25f));
+
+		waypoint = new GameObject(GameObject.root(), arrowShape, arrowTex);
+		waypoint.setLocalScale((new Matrix4f()).scale(1.25f));
 
 
 		// backRW = new GameObject(avatar, backRWShape, boxCarTex);
@@ -509,17 +512,17 @@ public class MyGame extends VariableFrameRateGame {
 		float chassisMass = 1500.0f;
 		float up[] = { 0, 1, 0 };
 		double[] tempTransform, npcTransform;
-		Matrix4f translation = new Matrix4f(avatar.getLocalTranslation());
+		Matrix4f translation = new Matrix4f(avatar.getWorldTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		translation = new Matrix4f().translation(5, 0, 5);
-		npcTransform = toDoubleArray(translation.get(vals));
+		// translation = new Matrix4f().translation(5, 1, 5);
+		// npcTransform = toDoubleArray(translation.get(vals));
 		// float[] chassisHalfExtens = {0.316f, 0.251f, 0.575f};
 		float[] chassisHalfExtens = { 1f, 0.5f, 2f };
 		avatarPhysicsUID = physicsEngine.nextUID();
-		npcPhysicsUID = physicsEngine.nextUID();
-		avatarP = physicsEngine.addVehicleObject(avatarPhysicsUID, chassisMass, tempTransform,
-				chassisHalfExtens);
-		npcP = physicsEngine.addVehicleObject(npcPhysicsUID, chassisMass, npcTransform, chassisHalfExtens);
+		// npcPhysicsUID = physicsEngine.nextUID();
+		avatarP = physicsEngine.addVehicleObject(avatarPhysicsUID, chassisMass, tempTransform, chassisHalfExtens);
+		// npcP = physicsEngine.addVehicleObject(npcPhysicsUID, chassisMass,
+		// npcTransform, chassisHalfExtens);
 
 		avatar.setPhysicsObject(avatarP);
 
@@ -533,16 +536,19 @@ public class MyGame extends VariableFrameRateGame {
 		physicsEngine.addWheels(vehicle, tuning, chassisHalfExtens, wheelRadius, connectionHeight, wheelWidth);
 
 		// Crude implimentation for NPC physics
-		npcVehicle = physicsEngine.getVehicle(npcP.getUID());
-		VehicleTuning npcTuning = physicsEngine.getVehicleTuning(npcP.getUID());
-		
-		physicsEngine.addWheels(npcVehicle, npcTuning, chassisHalfExtens, wheelRadius, connectionHeight, wheelWidth);
+		// npcVehicle = physicsEngine.getVehicle(npcP.getUID());
+		// VehicleTuning npcTuning = physicsEngine.getVehicleTuning(npcP.getUID());
+
+		// physicsEngine.addWheels(npcVehicle, npcTuning, chassisHalfExtens,
+		// wheelRadius, connectionHeight, wheelWidth);
 
 		translation = new Matrix4f(myRoad.getLocalTranslation());
 		tempTransform = toDoubleArray(translation.get(vals));
-		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(), tempTransform, up, 0.0f);
+		// terrainP = physicsEngine.addStaticPlaneObject(physicsEngine.nextUID(),
+		// tempTransform, up, 0.0f);
 		// terrainP.setFriction(1.0f);
-		float [] planeSize = {1000f, 1.0f , 1000f};
+		// float[] planeSize = { 4000f, 1.0f, 4000f };
+		float[] planeSize = { 2000f, 1.0f, 2000f };
 		terrainP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform, planeSize);
 		myRoad.setPhysicsObject(terrainP);
 		terrainP.setFriction(0.25f);
@@ -551,7 +557,8 @@ public class MyGame extends VariableFrameRateGame {
 		// translation = new Matrix4f(trafficCone.getLocalTranslation());
 		// tempTransform = toDoubleArray(translation.get(vals));
 		// float [] coneSize = {0.120f, 0.184f , 0.120f};
-		// trafficConeP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 5f, tempTransform, coneSize);
+		// trafficConeP = physicsEngine.addBoxObject(physicsEngine.nextUID(), 5f,
+		// tempTransform, coneSize);
 		// trafficCone.setPhysicsObject(trafficConeP);
 		// trafficConeP.setBounciness(0.4f);
 		// initMouseMode();
@@ -562,8 +569,9 @@ public class MyGame extends VariableFrameRateGame {
 		// translation = new Matrix4f(tempObj.getLocalTranslation());
 		// tempTransform = toDoubleArray(translation.get(vals));
 		// float[] building2HalfExtens = { 60.0f, 55.0f, 30.0f };
-		// building2P =  physicsEngine.addBoxObject(physicsEngine.nextUID(), 0, tempTransform,
-		// 		building2HalfExtens);
+		// building2P = physicsEngine.addBoxObject(physicsEngine.nextUID(), 0,
+		// tempTransform,
+		// building2HalfExtens);
 		// tempObj.setPhysicsObject(building2P);
 
 		// ----------------- INPUTS SECTION -----------------------------
@@ -572,25 +580,25 @@ public class MyGame extends VariableFrameRateGame {
 		DecelAction decelAction = new DecelAction(this, vehicle, protocolClient);
 		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
 		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
-		// ToggleCamaraType toggleCamaraType = new ToggleCamaraType(this);
+		ToggleCameraType toggleCameraType = new ToggleCameraType(this);
 		IncreaseVolume increaseVolume = new IncreaseVolume();
 		DecreaseVolume decreaseVolume = new DecreaseVolume();
 		ToggleAnimationType toggleAnimationType = new ToggleAnimationType(this);
+		PrepRaceAction prepRaceAction = new PrepRaceAction();
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 
 
-		// comment this out
 		im.associateActionWithAllKeyboards(Identifier.Key.W, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.S, decelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
-
 		im.associateActionWithAllKeyboards(Identifier.Key.D, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.O, increaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key.L, decreaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
-		// im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCameraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCameraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key._3, toggleAnimationType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key.R, prepRaceAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 	}
 
 	@Override
@@ -620,84 +628,97 @@ public class MyGame extends VariableFrameRateGame {
 		elapsed = (float) (elapsedTime / 1000.0);
 		amt = elapsedTime * 0.03;
 		// double amtt = totalTime * 0.001;
-		
+
 		// Turn off
-		System.out.println(vehicle.getCurrentSpeedKmHour());
-		if( vehicle.getCurrentSpeedKmHour() > 0f && !toggleAnimation){
+		// System.out.println(vehicle.getCurrentSpeedKmHour());
+		if (vehicle.getCurrentSpeedKmHour() > 0f && !toggleAnimation)
+		{
 			toggleAnimation = !toggleAnimation;
 			avatarAS.stopAnimation();
 			avatarAS.playAnimation("ACCEL", 0.5f, AnimatedShape.EndType.LOOP, 0);
-		}
-		else if (vehicle.getCurrentSpeedKmHour() < 0f && toggleAnimation) {
+		} else if (vehicle.getCurrentSpeedKmHour() < 0f && toggleAnimation)
+		{
 			toggleAnimation = !toggleAnimation;
 			avatarAS.stopAnimation();
-		} else {
+		} else
+		{
 			avatarAS.updateAnimation();
 		}
 
-		vehicle.setSteeringValue(vehicle.getSteeringValue(0) * 0.95f, 0);
-		vehicle.setSteeringValue(vehicle.getSteeringValue(1) * 0.95f, 1);
-		vehicle.setSteeringValue(vehicle.getSteeringValue(2) * 0.95f, 2);
-		vehicle.setSteeringValue(vehicle.getSteeringValue(3) * 0.95f, 3);
-
-		// Temp trigger to rotate back wheels
-		// if(rotatingWheels){
-		// backLW.getPhysicsObject().applyTorque(5, 0, 0);
-		// backRW.getPhysicsObject().applyTorque(5, 0, 0);
-		// }
-
-
 		// update physics
-		if (true)
+		Matrix4f mat = new Matrix4f();
+		Matrix4f mat2 = new Matrix4f().identity();
+		// checkForCollisions();
+		checkForNpcCollision();
+		physicsEngine.update((float) elapsedTime);
+		for (GameObject go : engine.getSceneGraph().getGameObjects())
 		{
-			Matrix4f mat = new Matrix4f();
-			Matrix4f mat2 = new Matrix4f().identity();
-			checkForCollisions();
-			physicsEngine.update((float) elapsedTime);
-			for (GameObject go : engine.getSceneGraph().getGameObjects())
-			{
-				PhysicsObject po = go.getPhysicsObject();
+			PhysicsObject po = go.getPhysicsObject();
 
-				// Skip the code below and go to the next GameObject if the PO is null
-				if (po == null)
-					continue;
+			// Skip the code below and go to the next GameObject if the PO is null
+			if (po == null)
+				continue;
 
-				mat.set(toFloatArray(po.getTransform()));
-				mat2.set(3, 0, mat.m30());
-				mat2.set(3, 1, mat.m31());
-				mat2.set(3, 2, mat.m32());
-				go.setLocalTranslation(mat2);
+			mat.set(toFloatArray(po.getTransform()));
+			mat2.set(3, 0, mat.m30());
+			mat2.set(3, 1, mat.m31());
+			mat2.set(3, 2, mat.m32());
+			go.setLocalTranslation(mat2);
 
-				AxisAngle4f aa = new AxisAngle4f();
-				mat.getRotation(aa);
+			AxisAngle4f aa = new AxisAngle4f();
+			mat.getRotation(aa);
 
-				Matrix4f rotMatrix4f = new Matrix4f();
-				rotMatrix4f.rotation(aa);
+			Matrix4f rotMatrix4f = new Matrix4f();
+			rotMatrix4f.rotation(aa);
 
-				go.setLocalRotation(rotMatrix4f);
-			}
+			go.setLocalRotation(rotMatrix4f);
+		}
+
+		for (int i = 0; i < 4; i++)
+		{
+			vehicle.setSteeringValue(vehicle.getSteeringValue(i) * 0.90f, i);
+			vehicle.setBrake(0, i);
+			vehicle.applyEngineForce(0, i);
 		}
 
 		// build and set HUD
 		speed = vehicle.getCurrentSpeedKmHour();
-		String speedString = String.format("Speed: %.2f", speed);
-		engine.getHUDmanager().setHUD1(speedString, new Vector3f(1, 1, 1), 15, 15);
-
-		// vehicle.applyEngineForce(0, 2);
-		// vehicle.applyEngineForce(0, 3);
+		speed = speed < 1 ? 0 : speed;
+		Vector3f pos = avatar.getWorldLocation();
+		String hud = String.format("Speed: %.2f", speed);
+		String p = String.format("x: %6.2f   y: %6.2f,   z: %6.2f", pos.x, pos.y, pos.z);
+		engine.getHUDmanager().setHUD1(hud, new Vector3f(1, 1, 1), 15, 15);
+		engine.getHUDmanager().setHUD2(p, new Vector3f(1, 1, 1), 200, 15);
 
 		if (newTarget)
 		{
-			Vector2f t = targets.get(target);
-			targetPos = new Vector3f(t.x, -0.5f, t.y);
-			waypoint.setLocalLocation(targetPos);
+			if (target >= targets.size())
+			{
+				targetPos = new Vector2f(0, 0);
+				protocolClient.sendFinishedRaceMessage();
+				raceDone = true;
+			}
+			else
+			{
+				targetPos = targets.get(target);
+			}
+			waypoint.setLocalLocation(new Vector3f(targetPos.x, 2.0f, targetPos.y));
 			newTarget = false;
 		}
 
-		// update inputs and camera
-		im.update(elapsed);
+		waypoint.worldYaw(0.03f);
+
+		if (!racePrep)
+		{
+			im.update(elapsed);
+		}
+
+		if (race)
+		{
+			updateNpc(elapsed);
+		}
+
 		updatePosition();
-		updateNpc(elapsed);
 		processNetworking(elapsed);
 
 		if (updateScriptInRuntime)
@@ -709,7 +730,8 @@ public class MyGame extends VariableFrameRateGame {
 			}
 		}
 
-		if(!toggleCameraType){
+		if (!toggleCameraType)
+		{
 			springController.updateCameraPosition(elapsed, speed);
 		} else
 		{
@@ -718,74 +740,34 @@ public class MyGame extends VariableFrameRateGame {
 		updateSounds();
 	}
 
+	public void toggleCamera()
+	{
+		toggleCameraType = !toggleCameraType;
+	}
+
+	public void ToggleAnimation()
+	{
+		toggleAnimation = !toggleAnimation;
+		if (toggleAnimation)
+		{
+			avatarAS.stopAnimation();
+			avatarAS.playAnimation("ACCEL", 0.5f, AnimatedShape.EndType.LOOP, 0);
+		} else
+		{
+			avatarAS.stopAnimation();
+		}
+	}
+
 	// --------- Target Section --------
 	private void setupTargets()
 	{
 		targets = new ArrayList<>();
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
-		targets.add(new Vector2f(30, 30));
-		targets.add(new Vector2f(30, -30));
-		targets.add(new Vector2f(-30, -30));
-		targets.add(new Vector2f(-30, 30));
+		targets.add(new Vector2f(-53.5f, 2.5f));
+		targets.add(new Vector2f(-200.5f, 3.5f));
+		// targets.add(new Vector2f(-349f, 8.5f));
+		// targets.add(new Vector2f(-545f, 102f));
 	}
 
-	public void toggleCamera(){
-		toggleCameraType = !toggleCameraType;
-	}
-
-	public void ToggleAnimation() {
-		toggleAnimation = !toggleAnimation;
-		if (toggleAnimation) {
-			avatarAS.stopAnimation();
-			avatarAS.playAnimation("ACCEL", 0.5f, AnimatedShape.EndType.LOOP, 0);
-		} else {
-			avatarAS.stopAnimation();
-		}
-	}
-	
 	// --------- Audio Section --------
 	private void setupSounds()
 	{
@@ -820,7 +802,7 @@ public class MyGame extends VariableFrameRateGame {
 		updateEar();
 		engineSound.setLocation(getPlayerPosition());
 		npcManager.updateSounds();
-		
+
 		// Ghost manager updates sound every server update
 	}
 
@@ -860,7 +842,7 @@ public class MyGame extends VariableFrameRateGame {
 
 	private void updateNpc(float time)
 	{
-		if (!isNpcHandler || npcManager.getNpc() == null)
+		if (!isNpcHandler || npcManager.getNpc() == null || !isClientConnected)
 		{
 			return;
 		}
@@ -868,11 +850,13 @@ public class MyGame extends VariableFrameRateGame {
 		NpcAvatar npc = npcManager.getNpc();
 		PhysicsObject po = npc.getPhysicsObject();
 		RaycastVehicle v = physicsEngine.getVehicle(po.getUID());
-		
+
 		if (npc.wantsAccel)
 		{
-			v.applyEngineForce(2000, 2);
-			v.applyEngineForce(2000, 3);
+			v.applyEngineForce(4000, 2);
+			v.applyEngineForce(4000, 3);
+			v.setBrake(0, 2);
+			v.setBrake(0, 3);
 		} else if (npc.wantsDecel)
 		{
 			v.setBrake(100, 2);
@@ -881,6 +865,8 @@ public class MyGame extends VariableFrameRateGame {
 		{
 			v.applyEngineForce(0, 2);
 			v.applyEngineForce(0, 3);
+			v.setBrake(0, 2);
+			v.setBrake(0, 3);
 		}
 
 		if ((npc.wantsTurnLeft || npc.wantsTurnRight) && v.getCurrentSpeedKmHour() < 5)
@@ -911,7 +897,6 @@ public class MyGame extends VariableFrameRateGame {
 			v.setSteeringValue(0, 3);
 		}
 
-		// Log.debug("Sending NPC move message\n");
 		protocolClient.sendNpcMoveMessage(npc.getWorldLocation(), getLookAt(npc), 1);
 	}
 
@@ -927,111 +912,45 @@ public class MyGame extends VariableFrameRateGame {
 
 	public PhysicsObject getNpcPhysicsObject()
 	{
+		float chassisMass = 1500.0f;
+		float wheelRadius = 0.5f;
+		float connectionHeight = 1.2f;
+		float wheelWidth = 0.4f;
+		Matrix4f translation = new Matrix4f().translation(5, 1, 5);
+		double[] npcTransform = toDoubleArray(translation.get(vals));
+		float[] chassisHalfExtens = { 1f, 0.5f, 2f };
+		npcPhysicsUID = physicsEngine.nextUID();
+		npcP = physicsEngine.addVehicleObject(npcPhysicsUID, chassisMass, npcTransform, chassisHalfExtens);
+		npcVehicle = physicsEngine.getVehicle(npcP.getUID());
+		VehicleTuning npcTuning = physicsEngine.getVehicleTuning(npcP.getUID());
+
+		physicsEngine.addWheels(npcVehicle, npcTuning, chassisHalfExtens, wheelRadius, connectionHeight, wheelWidth);
+
 		return npcP;
 	}
 
 	// --------- Movement Section --------
 
-	public double getSpeed()
-	{
-		return speed;
-	}
-
-	public boolean getIsFalling()
-	{
-		return isFalling;
-	}
-
-	public int getMaxSpeed()
-	{
-		return maxSpeed;
-	}
-
-	// public void accelerate(float time)
-	// {
-	// 	if (isFalling)
-	// 	{
-	// 		return;
-	// 	}
-
-	// 	speed += time * acceleration;
-
-	// 	if (speed > maxSpeed)
-	// 	{
-	// 		speed = maxSpeed;
-	// 	}
-	// }
-
-	// public void decelerate(float time)
-	// {
-	// 	if (isFalling)
-	// 	{
-	// 		return;
-	// 	}
-
-	// 	speed -= time * deceleration;
-
-	// 	if (speed < 0)
-	// 	{
-	// 		speed = 0;
-	// 	}
-
-	// 	// brakeApplied = true;
-	// }
-
-	// private void stoppingForce(float time)
-	// {
-	// 	speed -= time * stoppingForce;
-
-	// 	if (speed < 0)
-	// 	{
-	// 		speed = 0;
-	// 	}
-	// }
-
-	// private void applyGravity(float time)
-	// {
-	// 	Vector3f pos = avatar.getWorldLocation();
-
-	// 	// Little trick to get the bottom of the obj to be on the ground
-	// 	pos.y += avatar.getShape().getLowestVertexY() * 0.25f;
-	// 	float floor = terrain.getHeight(pos.x, pos.z);
-
-	// 	if (pos.y > floor)
-	// 	{
-	// 		isFalling = true;
-	// 		gravitySpeed += time * gravity;
-	// 		pos.y -= gravitySpeed;
-
-	// 		if (pos.y <= floor)
-	// 		{
-	// 			pos.y = floor;
-	// 			isFalling = false;
-	// 			gravitySpeed = 0;
-	// 			pos.y = floor;
-	// 		}
-
-	// 		pos.y -= avatar.getShape().getLowestVertexY() * 0.25f;
-	// 		avatar.setLocalLocation(pos);
-	// 	}
-
-	// 	else if (pos.y < floor)
-	// 	{
-	// 		pos.y = floor - avatar.getShape().getLowestVertexY() * 0.25f;
-	// 		avatar.setLocalLocation(pos);
-	// 		isFalling = false;
-	// 	}
-	// }
-
 	private void updatePosition()
 	{
-		if (avatar.getLocalLocation().distance(targetPos) < targetMargin)
+		if (!isClientConnected)
 		{
-			target++;
-			newTarget = true;
+			return;
 		}
 
-		protocolClient.sendMoveMessage(avatar.getWorldLocation(), getLookAt(avatar), engineSound.getPitch());
+		Vector3f pos = avatar.getWorldLocation();
+
+		if (race && !raceDone)
+		{
+			Vector2f pos2f = new Vector2f(pos.x, pos.z);
+			if (pos2f.distance(targetPos) < targetMargin)
+			{
+				target++;
+				newTarget = true;
+			}
+		}
+
+		protocolClient.sendMoveMessage(pos, getLookAt(avatar), engineSound.getPitch());
 	}
 
 	private void checkForCollisions()
@@ -1059,17 +978,58 @@ public class MyGame extends VariableFrameRateGame {
 				contactPoint = manifold.getContactPoint(j);
 				if (contactPoint.getDistance() < 0.0f)
 				{
-					// System.out.println("---- hit between " + obj1 + " and " + obj2);
-					if (!isNpcHandler)
+
+
+					// if ((obj1.getUID() == avatarPhysicsUID && obj2.getUID() == npcPhysicsUID)
+					// || (obj1.getUID() == npcPhysicsUID && obj2.getUID() == avatarPhysicsUID))
+					// {
+					// System.out.println("---- hit between avatar and npc");
+					// protocolClient.forceNpcUpdate(npcManager.getNpc().getWorldLocation(),
+					// getLookAt(npcManager.getNpc()), 1);
+					// }
+
+					break;
+				}
+			}
+		}
+	}
+
+	private void checkForNpcCollision()
+	{
+		if (!isNpcHandler && npcManager.getNpc() != null)
+		{
+			com.bulletphysics.dynamics.DynamicsWorld dynamicsWorld;
+			com.bulletphysics.collision.broadphase.Dispatcher dispatcher;
+			com.bulletphysics.collision.narrowphase.PersistentManifold manifold;
+			com.bulletphysics.dynamics.RigidBody object1, object2;
+			com.bulletphysics.collision.narrowphase.ManifoldPoint contactPoint;
+
+			dynamicsWorld = ((JBulletPhysicsEngine) physicsEngine).getDynamicsWorld();
+			dispatcher = dynamicsWorld.getDispatcher();
+
+			int manifoldCount = dispatcher.getNumManifolds();
+			for (int i = 0; i < manifoldCount; i++)
+			{
+				manifold = dispatcher.getManifoldByIndexInternal(i);
+				object1 = (com.bulletphysics.dynamics.RigidBody) manifold.getBody0();
+				object2 = (com.bulletphysics.dynamics.RigidBody) manifold.getBody1();
+				JBulletPhysicsObject obj1 = JBulletPhysicsObject.getJBulletPhysicsObject(object1);
+				JBulletPhysicsObject obj2 = JBulletPhysicsObject.getJBulletPhysicsObject(object2);
+				if ((obj1.getUID() == avatarPhysicsUID && obj2.getUID() == npcPhysicsUID)
+						|| (obj1.getUID() == npcPhysicsUID && obj2.getUID() == avatarPhysicsUID))
+				{
+					for (int j = 0; j < manifold.getNumContacts(); j++)
 					{
-						if ((obj1.getUID() == avatarPhysicsUID && obj2.getUID() == npcPhysicsUID) || (obj1.getUID() == npcPhysicsUID && obj2.getUID() == avatarPhysicsUID))
+						contactPoint = manifold.getContactPoint(j);
+						if (contactPoint.getDistance() < 0.0f)
 						{
-							System.out.println("---- hit between avatar and npc");
-							protocolClient.forceNpcUpdate(npcManager.getNpc().getWorldLocation(), getLookAt(
-									npcManager.getNpc()), 1);
+
+							System.out.println("---- hit between avatar and npc ----");
+							protocolClient.forceNpcUpdate(npcManager.getNpc().getWorldLocation(),
+									getLookAt(npcManager.getNpc()), 1);
+							break;
 						}
 					}
-					break;
 				}
 			}
 		}
@@ -1127,7 +1087,8 @@ public class MyGame extends VariableFrameRateGame {
 			double mouseDeltaX = prevMouseX - curMouseX;
 			double mouseDeltaY = prevMouseY - curMouseY;
 
-			if(!toggleCameraType){
+			if (!toggleCameraType)
+			{
 				springController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
 			} else
 			{
@@ -1334,12 +1295,76 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		return targets;
 	}
-	
+
+	public void prepareForRace()
+	{
+		protocolClient.sendPrepRaceMessage();
+		// goToRaceStart(-2);
+	}
+
+	public void goToRaceStart(float pos)
+	{
+		racePrep = true;
+		Matrix4f mat = new Matrix4f().translate(0, 0, pos * -2);
+		avatar.setLocalTranslation(mat);
+		avatar.lookAt(-1, 0, pos);
+		mat = avatar.getLocalTranslation();
+		mat = mat.mul(avatar.getLocalRotation());
+		avatarP.setTransform(toDoubleArray(mat.get(vals)));
+		avatarP.setAngularVelocity(new float[] { 0, 0, 0 });
+		avatarP.setLinearVelocity(new float[] { 0, 0, 0 });
+		for (int i = 0; i < 4; i++)
+		{
+			vehicle.setBrake(Float.MAX_VALUE, i);
+			vehicle.applyEngineForce(0, i);
+			vehicle.setSteeringValue(0, i);
+		}
+
+		if (isNpcHandler)
+		{
+			NpcAvatar npc = npcManager.getNpc();
+			mat = new Matrix4f().translate(0, 0, 2);
+			npc.setLocalTranslation(mat);
+			npc.lookAt(-1, 0, 2);
+			mat = npc.getLocalTranslation();
+			mat = mat.mul(npc.getLocalRotation());
+			npcP.setTransform(toDoubleArray(mat.get(vals)));
+			npcP.setAngularVelocity(new float[] { 0, 0, 0 });
+			npcP.setLinearVelocity(new float[] { 0, 0, 0 });
+			for (int i = 0; i < 4; i++)
+			{
+				npcVehicle.setBrake(Float.MAX_VALUE, i);
+				npcVehicle.applyEngineForce(0, i);
+				npcVehicle.setSteeringValue(0, i);
+			}
+		}
+	}
+
+	public void startRace()
+	{
+		race = true;
+		racePrep = false;
+
+		for (int i = 0; i < 4; i++)
+		{
+			vehicle.setBrake(0, i);
+		}
+
+		if (isNpcHandler)
+		{
+			for (int i = 0; i < 4; i++)
+			{
+				npcVehicle.setBrake(0, i);
+			}
+		}
+	}
+
 	// ------------------ INPUT HANDLING ------------------------
 	private class ToggleCameraType extends AbstractInputAction {
 		MyGame myGame;
 
-		ToggleCameraType(MyGame myGame){
+		ToggleCameraType(MyGame myGame)
+		{
 			this.myGame = myGame;
 		}
 
@@ -1386,6 +1411,14 @@ public class MyGame extends VariableFrameRateGame {
 				volume += 0.1;
 				updateVolume();
 			}
+		}
+	}
+
+	private class PrepRaceAction extends AbstractInputAction {
+		@Override
+		public void performAction(float time, Event evt)
+		{
+			prepareForRace();
 		}
 	}
 

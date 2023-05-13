@@ -148,10 +148,6 @@ public class ProtocolClient extends GameConnectionClient {
 			// Handle NPC_STATUS message
 			else if (messageTokens[0].compareTo("npcstatus") == 0)
 			{
-				// Vector3f position = new Vector3f(Float.parseFloat(messageTokens[1]), Float.parseFloat(messageTokens[2]),
-				// 		Float.parseFloat(messageTokens[3]));
-				// Vector3f lookat = new Vector3f(Float.parseFloat(messageTokens[4]), Float.parseFloat(messageTokens[5]),
-				// 		Float.parseFloat(messageTokens[6]));
 				boolean wantsAccel = messageTokens[7].equals("1");
 				boolean wantsDecel = messageTokens[8].equals("1");
 				boolean wantsTurnLeft = messageTokens[9].equals("1");
@@ -169,6 +165,21 @@ public class ProtocolClient extends GameConnectionClient {
 						Float.parseFloat(messageTokens[6]));
 				
 				npcManager.updateNpcAvatar(position, lookat);
+			}
+
+			else if (messageTokens[0].compareTo("gotoracestart") == 0)
+			{
+				game.goToRaceStart(Integer.parseInt(messageTokens[1]));
+			}
+
+			else if (messageTokens[0].compareTo("racestart") == 0)
+			{
+				game.startRace();
+			}
+
+			else if (messageTokens[0].compareTo("position") == 0)
+			{
+				System.out.println("position: " + messageTokens[1]);
 			}
 
 			else 
@@ -218,13 +229,12 @@ public class ProtocolClient extends GameConnectionClient {
 		try
 		{
 			String message = new String("create," + id.toString());
-			message += "," + position.x();
-			message += "," + position.y();
-			message += "," + position.z();
-			message += "," + lookat.x();
-			message += "," + lookat.y();
-			message += "," + lookat.z();
-
+			message += String.format(",%.2f", position.x());
+			message += String.format(",%.2f", position.y());
+			message += String.format(",%.2f", position.z());
+			message += String.format(",%.2f", lookat.x());
+			message += String.format(",%.2f", lookat.y());
+			message += String.format(",%.2f", lookat.z());
 			message += "," + textureSelection;
 
 			sendPacket(message);
@@ -246,12 +256,12 @@ public class ProtocolClient extends GameConnectionClient {
 		try
 		{
 			String message = new String("dsfr," + remoteId.toString() + "," + id.toString());
-			message += "," + position.x();
-			message += "," + position.y();
-			message += "," + position.z();
-			message += "," + lookat.x();
-			message += "," + lookat.y();
-			message += "," + lookat.z();
+			message += String.format(",%.2f", position.x());
+			message += String.format(",%.2f", position.y());
+			message += String.format(",%.2f", position.z());
+			message += String.format(",%.2f", lookat.x());
+			message += String.format(",%.2f", lookat.y());
+			message += String.format(",%.2f", lookat.z());
 			message += "," + textureSelection;
 
 			sendPacket(message);
@@ -270,13 +280,13 @@ public class ProtocolClient extends GameConnectionClient {
 		try
 		{
 			String message = new String("move," + id.toString());
-			message += "," + position.x();
-			message += "," + position.y();
-			message += "," + position.z();
-			message += "," + lookat.x();
-			message += "," + lookat.y();
-			message += "," + lookat.z();
-			message += "," + pitch;
+			message += String.format(",%.2f", position.x());
+			message += String.format(",%.2f", position.y());
+			message += String.format(",%.2f", position.z());
+			message += String.format(",%.2f", lookat.x());
+			message += String.format(",%.2f", lookat.y());
+			message += String.format(",%.2f", lookat.z());
+			message += String.format(",%.2f", pitch);
 
 			sendPacket(message);
 		} catch (IOException e)
@@ -349,6 +359,32 @@ public class ProtocolClient extends GameConnectionClient {
 			message += String.format(",%.2f", lookat.y());
 			message += String.format(",%.2f", lookat.z());
 			message += String.format(",%.2f", pitch);
+
+			sendPacket(message);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void sendPrepRaceMessage()
+	{
+		try
+		{
+			String message = new String("preprace," + id.toString());
+
+			sendPacket(message);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void sendFinishedRaceMessage()
+	{
+		try
+		{
+			String message = new String("finished," + id.toString());
 
 			sendPacket(message);
 		} catch (IOException e)

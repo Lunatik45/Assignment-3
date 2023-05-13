@@ -3,8 +3,6 @@ package tage.input.action;
 import net.java.games.input.Event;
 import tage.*;
 
-import org.joml.*;
-
 import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 
 import a3.MyGame;
@@ -30,11 +28,6 @@ public class TurnLeftAction extends AbstractInputAction {
 	@Override
 	public void performAction(float time, Event e)
 	{
-		// steer += steerInc;
-		// if(steer > steerMax){
-		// steer = steerMax;
-		// }
-
 		steer = vehicle.getSteeringValue(0);
 		steer += turnConst + (turnCoef * time);
 		if (steer > steerMax)
@@ -42,28 +35,10 @@ public class TurnLeftAction extends AbstractInputAction {
 			steer = steerMax;
 		}
 
-		// Log.print("Steer: %.4f\n", steer);
-
 		vehicle.setSteeringValue(steer, 0);
 		vehicle.setSteeringValue(steer, 1);
 		vehicle.setSteeringValue(-steer * 0.5f, 2);
 		vehicle.setSteeringValue(-steer * 0.5f, 3);
-
-		steer = 0.0f;
-
-		// float keyValue = e.getValue();
-		// if (keyValue > -.2 && keyValue < .2)
-		// return; // deadzone
-
-		// av = game.getAvatar();
-
-		// if (game.getSpeed() > 0 && !game.getIsFalling())
-		// {
-		// float speed = (float) game.getSpeed();
-		// float max = (float) game.getMaxSpeed();
-		// float yaw = time * turnCoef * (speed / max) + turnConst;
-		// av.worldYaw(yaw);
-		// }
 	}
 }
 
