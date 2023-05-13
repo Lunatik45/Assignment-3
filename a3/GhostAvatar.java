@@ -58,4 +58,9 @@ public class GhostAvatar extends GameObject {
 	{
 		engineSound.release(audioMgr);
 	}
+
+	public void setVolume(int volume)
+	{
+		engineSound.setVolume(volume);
+	}
 }

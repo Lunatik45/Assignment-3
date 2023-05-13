@@ -2,6 +2,8 @@ package server;
 
 import java.io.IOException;
 import java.net.InetAddress;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.UUID;
 
 import tage.Log;
@@ -12,11 +14,17 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 
 	private NPCController npcController;
 	private UUID npcClient;
+	private int blockHandlerUpdates;
+	private HashMap<UUID, Boolean> readyStatus;
+	private ArrayList<String> finished;
 
 	public GameServerUDP(int localPort, NPCController npcController) throws IOException
 	{
 		super(localPort, ProtocolType.UDP);
 		this.npcController = npcController;
+		blockHandlerUpdates = 0;
+		readyStatus = new HashMap<>();
+		finished = new ArrayList<>();
 	}
 
 	@Override
@@ -36,6 +44,7 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 					addClient(ci, clientID);
 					System.out.println("Join request received from - " + clientID.toString());
 					sendJoinedMessage(clientID, true);
+					readyStatus.put(clientID, false);
 				} catch (IOException e)
 				{
 					e.printStackTrace();
@@ -72,14 +81,21 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				sendMoveMessages(clientID,
 						message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
 			}
-		
+
 			else if (messageTokens[0].compareTo("npcmove") == 0)
 			{
-				UUID clientID = UUID.fromString(messageTokens[1]);
-				sendNPCmove(clientID, message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
-				npcController.updateNpc(message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+				if (blockHandlerUpdates <= 0)
+				{
+					UUID clientID = UUID.fromString(messageTokens[1]);
+					String msg = message.substring(messageTokens[0].length() + messageTokens[1].length() + 2);
+					sendNPCmove(clientID, msg);
+					npcController.updateNpc(msg);
+				} else
+				{
+					blockHandlerUpdates--;
+				}
 			}
-		
+
 			else if (messageTokens[0].compareTo("getnpc") == 0)
 			{
 				Log.trace("getnpc message received\n");
@@ -92,11 +108,10 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 					sendGetNPCTargets(npcClient);
 					Log.trace("Sending createNPC message\n");
 					sendCreateNPCmsg(npcClient, npcController.getNpcStatus());
-				}
-				else
-				{	
+				} else
+				{
 					Log.trace("Sending createNPC message\n");
-					sendCreateNPCmsg(npcClient, npcController.getNpcStatus());
+					sendCreateNPCmsg(UUID.fromString(messageTokens[1]), npcController.getNpcStatus());
 				}
 			}
 
@@ -106,9 +121,103 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				npcController.setTargets(message.substring(messageTokens[0].length() + 1));
 			}
 
-			else {
+			else if (messageTokens[0].compareTo("forcenpcmove") == 0)
+			{
+				blockHandlerUpdates = 5;
+				UUID clientID = UUID.fromString(messageTokens[1]);
+				sendNPCmove(clientID, message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+				npcController.updateNpc(message.substring(messageTokens[0].length() + messageTokens[1].length() + 2));
+			}
+
+			else if (messageTokens[0].compareTo("preprace") == 0)
+			{
+				readyStatus.put(UUID.fromString(messageTokens[1]), true);
+				checkRaceStart();
+			}
+
+			else if (messageTokens[0].compareTo("finished") == 0)
+			{
+				finished.add(messageTokens[1]);
+
+				sendPosition(UUID.fromString(messageTokens[1]), finished.size());
+			}
+
+			else
+			{
 				Log.print("Unhandled message: %s\n", message);
 			}
+		}
+	}
+
+	private void checkRaceStart()
+	{
+		boolean allReady = true;
+		for (Boolean b : readyStatus.values())
+		{
+			if (!b)
+			{
+				allReady = false;
+				break;
+			}
+		}
+
+		if (allReady)
+		{
+			sendGoToRaceStart();
+			Log.print("Starting race sequence!\n");
+			int wait = 5;
+			Log.print("Waiting for %d seconds...\n", wait);
+			try
+			{
+				Thread.sleep(wait * 1000);
+			} catch (InterruptedException e)
+			{
+				e.printStackTrace();
+			}
+			
+			Log.print("Start race!\n");
+			sendRaceStart();
+		}
+	}
+
+	private void sendRaceStart()
+	{
+		try
+		{
+			String message = new String("racestart");
+			sendPacketToAll(message);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private void sendGoToRaceStart()
+	{
+		try
+		{
+			String message = new String("gotoracestart,");
+			int i = 0;
+			for (HashMap.Entry<UUID, Boolean> set : readyStatus.entrySet())
+			{
+				sendPacket(message + i, set.getKey());
+				i++;
+			}
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	private void sendPosition(UUID clientID, int position)
+	{
+		try
+		{
+			String message = new String("position," + position);
+			sendPacket(message, clientID);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
 		}
 	}
 
@@ -296,5 +405,11 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 		{
 			e.printStackTrace();
 		}
+	}
+
+	public void npcFinished()
+	{
+		finished.add("npc");
+		Log.print("NPC finished! %d\n", finished.size());
 	}
 }

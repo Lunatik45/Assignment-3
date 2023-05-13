@@ -28,9 +28,10 @@ public class GhostManager {
 		ObjShape s = game.getGhostShape();
 		TextureImage t = game.getAvatarTex(texture);
 		GhostAvatar newAvatar = new GhostAvatar(id, s, t, position, game.getNewEngineSound(), game.getAudioManager());
-		Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
-		newAvatar.setLocalScale(initialScale);
+		// Matrix4f initialScale = (new Matrix4f()).scaling(0.25f);
+		// newAvatar.setLocalScale(initialScale);
 		newAvatar.lookAt(lookat);
+		newAvatar.setVolume(game.getEngVolume());
 		ghostAvatars.add(newAvatar);
 	}
 
@@ -86,6 +87,15 @@ public class GhostManager {
 		while (it.hasNext())
 		{
 			it.next().stopSounds();
+		}
+	}
+
+	public void updateVolume()
+	{
+		Iterator<GhostAvatar> it = ghostAvatars.iterator();
+		while (it.hasNext())
+		{
+			it.next().setVolume(game.getEngVolume());
 		}
 	}
 }
