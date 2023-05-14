@@ -875,7 +875,14 @@ public class MyGame extends VariableFrameRateGame {
 		speed = vehicle.getCurrentSpeedKmHour();
 		speed = speed < 1 ? 0 : speed;
 		String hud = String.format("Speed: %.2f", speed);
-		String p = String.format("Position: %d", position);
+		String p = "";
+		if (raceDone)
+		{
+			p = String.format("Finished %d!", position);
+		}
+		else{
+			p = String.format("Position: %d", position);
+		}
 		engine.getHUDmanager().setHUD1(hud, new Vector3f(1, 1, 1), 15, 15);
 		engine.getHUDmanager().setHUD2(p, new Vector3f(1, 1, 1), 550, 15);
 
