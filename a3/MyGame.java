@@ -1629,7 +1629,7 @@ public class MyGame extends VariableFrameRateGame {
 		racePrep = true;
 		Matrix4f mat = new Matrix4f().translate(0, 0, pos * -2);
 		avatar.setLocalTranslation(mat);
-		avatar.lookAt(-1, 0, pos);
+		avatar.lookAt(-1, 0, pos * -2);
 		mat = avatar.getLocalTranslation();
 		mat = mat.mul(avatar.getLocalRotation());
 		avatarP.setTransform(toDoubleArray(mat.get(vals)));
