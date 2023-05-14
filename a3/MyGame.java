@@ -99,7 +99,7 @@ public class MyGame extends VariableFrameRateGame {
 	private File scriptFile;
 	private ArrayList<GameObject> stationary, dynamic;
 	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, plane, myRoad, frontRW,
-			frontLW, backRW, backLW, waypoint, tcBarrier1, tcBarrier2, tcBarrier3, tcBarrier4, carLight_L, carLight_R;
+			frontLW, backRW, backLW, waypoint, tcBarrier1, tcBarrier2, tcBarrier3, tcBarrier4, carLight_L, carLight_R, spareTire;
 	private AnimatedShape avatarAS;
 	private GhostManager ghostManager;
 	private IAudioManager audioMgr;
@@ -108,7 +108,7 @@ public class MyGame extends VariableFrameRateGame {
 	private ObjShape ghostShape, planeShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S,
 			trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape,
 			building1Shape, building2Shape, building3Shape, building4Shape, trafficB3Shape, trafficB2Shape,
-			trafficB1Shape, arrowShape, multipleBuildings, multipleBuildings3, multipleBuildings4, carLightShape_L, carLightShape_R;
+			trafficB1Shape, arrowShape, multipleBuildings, multipleBuildings3, multipleBuildings4, carLightShape_L, carLightShape_R, spareTireShape;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private Robot robot;
@@ -269,7 +269,7 @@ public class MyGame extends VariableFrameRateGame {
 		trafficConeShape = new ImportedModel("trafficCone.obj");
 		terrainShape = new TerrainPlane(500);
 		planeShape = new Plane();
-
+		spareTireShape = new ImportedModel("spareTire.obj");
 		myRoadShape = new ImportedModel("myRoad.obj");
 		building1Shape = new ImportedModel("Building1.obj");
 		building2Shape = new ImportedModel("Building2.obj");
@@ -343,6 +343,9 @@ public class MyGame extends VariableFrameRateGame {
 		avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
 		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
 		// avatar.setLocalTranslation((new Matrix4f()).translate(-230.0f, heightOffGround, -480.0f));
+
+		spareTire = new GameObject(avatar, spareTireShape, avatarTex);
+		// spareTire.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
 
 		carLight_L = new GameObject(avatar, carLightShape_L, avatarTex);
 		carLight_L.getRenderStates().disableRendering();
@@ -884,7 +887,7 @@ public class MyGame extends VariableFrameRateGame {
 
 				car_L.setDirection(carLight_L.getLocalForwardVector());
 				car_R.setLocation(carLight_R.getLocalForwardVector());
-				
+
 			}
 		}
 
