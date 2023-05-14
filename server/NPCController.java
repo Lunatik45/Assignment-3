@@ -113,6 +113,7 @@ public class NPCController {
 	public void iterateTarget()
 	{
 		target++;
+		server.updateCheckpoint("npc", target);
 	}
 
 	public String getNpcStatus()

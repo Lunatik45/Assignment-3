@@ -17,6 +17,8 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 	private int blockHandlerUpdates;
 	private HashMap<UUID, Boolean> readyStatus;
 	private ArrayList<String> finished;
+	private int checkpoint = 0;
+	private int position = 0;
 
 	public GameServerUDP(int localPort, NPCController npcController) throws IOException
 	{
@@ -142,10 +144,33 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 				sendPosition(UUID.fromString(messageTokens[1]), finished.size());
 			}
 
+			else if (messageTokens[0].compareTo("checkpoint") == 0)
+			{
+				updateCheckpoint(messageTokens[1], Integer.parseInt(messageTokens[2]));
+			}
+
 			else
 			{
 				Log.print("Unhandled message: %s\n", message);
 			}
+		}
+	}
+
+	public void updateCheckpoint(String uuid, int checkpoint)
+	{
+		if (checkpoint > this.checkpoint)
+		{
+			this.checkpoint = checkpoint;
+			position = 0;
+		}
+
+		if (!uuid.equals("npc"))
+		{
+			sendPosition(UUID.fromString(uuid), ++position);
+		} 
+		else
+		{
+			position++;
 		}
 	}
 
@@ -174,7 +199,7 @@ public class GameServerUDP extends GameConnectionServer<UUID> {
 			{
 				e.printStackTrace();
 			}
-			
+
 			Log.print("Start race!\n");
 			sendRaceStart();
 		}

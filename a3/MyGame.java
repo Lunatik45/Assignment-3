@@ -132,7 +132,7 @@ public class MyGame extends VariableFrameRateGame {
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime, amt, volume = 1, totalTime;
 	private float elapsed, targetMargin = 25, waypointHeight = 7f;
-	private int maxVolBG = 40, maxVolEng = 80, arid, maxSpeed, passes = 0, target = 0;
+	private int maxVolBG = 40, maxVolEng = 80, arid, maxSpeed, passes = 0, target = 0, position = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP, building2P;
@@ -874,9 +874,8 @@ public class MyGame extends VariableFrameRateGame {
 		// build and set HUD
 		speed = vehicle.getCurrentSpeedKmHour();
 		speed = speed < 1 ? 0 : speed;
-		Vector3f pos = avatar.getWorldLocation();
 		String hud = String.format("Speed: %.2f", speed);
-		String p = String.format("x: %6.2f   y: %6.2f,   z: %6.2f", pos.x, pos.y, pos.z);
+		String p = String.format("Position: %d", position);
 		engine.getHUDmanager().setHUD1(hud, new Vector3f(1, 1, 1), 15, 15);
 		engine.getHUDmanager().setHUD2(p, new Vector3f(1, 1, 1), 550, 15);
 
@@ -1016,6 +1015,10 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
+	public void setPosition(int position)
+	{
+		this.position = position;
+	}
 	// --------- Audio Section --------
 	private void setupSounds()
 	{
@@ -1197,6 +1200,7 @@ public class MyGame extends VariableFrameRateGame {
 			{
 				target++;
 				newTarget = true;
+				protocolClient.sendCheckpointMessage(target);
 			}
 		}
 

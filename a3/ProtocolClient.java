@@ -180,6 +180,7 @@ public class ProtocolClient extends GameConnectionClient {
 			else if (messageTokens[0].compareTo("position") == 0)
 			{
 				System.out.println("position: " + messageTokens[1]);
+				game.setPosition(Integer.parseInt(messageTokens[1]));
 			}
 
 			else 
@@ -385,6 +386,19 @@ public class ProtocolClient extends GameConnectionClient {
 		try
 		{
 			String message = new String("finished," + id.toString());
+
+			sendPacket(message);
+		} catch (IOException e)
+		{
+			e.printStackTrace();
+		}
+	}
+
+	public void sendCheckpointMessage(int checkpoint)
+	{
+		try
+		{
+			String message = new String("checkpoint," + id.toString() + "," + checkpoint);
 
 			sendPacket(message);
 		} catch (IOException e)
