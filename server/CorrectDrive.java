@@ -7,12 +7,12 @@ import tage.Log;
 import tage.ai.behaviortrees.BTAction;
 import tage.ai.behaviortrees.BTStatus;
 
-public class CorrectDrive extends BTAction{
+public class CorrectDrive extends BTAction {
 
 	private NPCController npcController;
 	private GameServerUDP server;
 	private NPC npc;
-	private double m1 = 0.1, m2 = 0.3, m3 = 1;
+	private double m1 = 20, m2 = 30, m3 = 45;
 
 	public CorrectDrive(NPCController npcController, GameServerUDP server, NPC npc)
 	{
@@ -37,25 +37,39 @@ public class CorrectDrive extends BTAction{
 		double angleAbs = Math.abs(angle);
 		boolean left = angle < 0;
 
-		// Log.print("Angle: %.2f\n", angle);
-
 		npc.resetDriveStatus();
 
-		if (angleAbs > m3)
+		if (pos2f.distance(nextTarget) < 20)
+		{
+			m1 = 30;
+			m2 = 60;
+			m3 = 75;
+		}
+		else if (pos2f.distance(nextTarget) < 50)
+		{
+			m1 = 20;
+			m2 = 40;
+			m3 = 50;
+		} 
+		else
+		{
+			m1 = 10;
+			m2 = 15;
+			m3 = 20;
+		}
+
+		if (angleAbs > Math.toRadians(m3))
 		{
 			npc.brake();
 			npc.turn(left);
-		}
-		else if (angleAbs > m2)
+		} else if (angleAbs > Math.toRadians(m2))
 		{
 			npc.turn(left);
-		}
-		else if (angleAbs > m1)
+		} else if (angleAbs > Math.toRadians(m1))
 		{
 			npc.accelerate();
 			npc.turn(left);
-		}
-		else
+		} else
 		{
 			npc.accelerate();
 		}

@@ -10,8 +10,8 @@ public class CorrectionNeeded extends BTCondition {
 
 	private NPCController npcController;
 	private NPC npc;
-	private double angleMargin = 0.1;
-	private double positionMargin = 2.0;
+	private double angleMargin = 15;
+	private double positionMargin = 10;
 	private boolean straightGiven = false;
 
 	public CorrectionNeeded(NPCController npcController, NPC npc, boolean toNegate)
@@ -42,7 +42,7 @@ public class CorrectionNeeded extends BTCondition {
 		Vector2f t = new Vector2f(nextTarget).sub(pos2f).normalize();
 		double angle = l.angle(t);
 
-		if (Math.abs(angle) > angleMargin)
+		if (Math.abs(angle) > Math.toRadians(angleMargin))
 		{
 			if (straightGiven)
 			{

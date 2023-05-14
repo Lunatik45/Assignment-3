@@ -17,7 +17,7 @@ public class NPCController {
 	private GameServerUDP server;
 	private NPC npc;
 
-	private boolean ready = false;
+	private boolean ready = false, finished = false;
 	private int target;
 	private long lastThinkUpdateTime, lastTickUpdateTime;
 	private long thinkStartTime, tickStartTime;
@@ -74,19 +74,16 @@ public class NPCController {
 
 	public Vector2f getNextTarget()
 	{
-		// try
-		// {
-		// 	return targets.get(target);
-		// } catch (IndexOutOfBoundsException e)
-		// {
-		// 	return targets.get(0);
-		// }
 		if (target >= targets.size())
 		{
-			target = 0;
 			server.npcFinished();
+			finished = true;
 		}
 
+		if (finished)
+		{
+			target = 0;
+		}
 		return targets.get(target);
 	}
 
@@ -99,7 +96,7 @@ public class NPCController {
 			{
 				long currentTime = System.nanoTime();
 				float elapsedThinkMilliSecs = (currentTime - lastThinkUpdateTime) / (1000000.0f);
-				float elapsedTickMilliSecs = (currentTime - lastTickUpdateTime) / (1000000.0f);
+				// float elapsedTickMilliSecs = (currentTime - lastTickUpdateTime) / (1000000.0f);
 
 				// Think & tick
 				if (elapsedThinkMilliSecs >= 30.0f)

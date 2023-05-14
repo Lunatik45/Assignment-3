@@ -132,7 +132,7 @@ public class MyGame extends VariableFrameRateGame {
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime, amt, volume = 1, totalTime;
 	private float elapsed, targetMargin = 25, waypointHeight = 7f;
-	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0, target = 0;
+	private int maxVolBG = 40, maxVolEng = 80, arid, maxSpeed, passes = 0, target = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP, building2P;
@@ -288,7 +288,7 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		trafficConeTex = new TextureImage("traffic_cone.png");
 		ghostTex = new TextureImage("CarTexture.png");
-		terrainTex = new TextureImage("tileable_grass_01.png");
+		terrainTex = new TextureImage("tileable_grass_02.png");
 		terrainHeightMap = new TextureImage("terrainTest.png");
 		boxCarTex = new TextureImage("CarTexture.png");
 		myRoadTex = new TextureImage("road1.jpg");
@@ -312,8 +312,8 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void loadSkyBoxes()
 	{
-		lakeIslands = (engine.getSceneGraph()).loadCubeMap("lakeIslands");
-		(engine.getSceneGraph()).setActiveSkyBoxTexture(lakeIslands);
+		arid = (engine.getSceneGraph()).loadCubeMap("arid");
+		(engine.getSceneGraph()).setActiveSkyBoxTexture(arid);
 		(engine.getSceneGraph()).setSkyBoxEnabled(true);
 	}
 
@@ -454,17 +454,17 @@ public class MyGame extends VariableFrameRateGame {
 
 		newObj = new GameObject(GameObject.root(), multipleBuildings3, building3Tex);
 
-		newObj = new GameObject(GameObject.root(), building3Shape, building3Tex);
-		newObj.setLocalScale((new Matrix4f()).scale(0.06f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(4.0f, 0.0f, 0.0f));
-		stationary.add(newObj);
+		// newObj = new GameObject(GameObject.root(), building3Shape, building3Tex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.06f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(4.0f, 0.0f, 0.0f));
+		// stationary.add(newObj);
 		
 		// newObj = new GameObject(GameObject.root(), multipleBuildings4, building4Tex);
 
-		newObj = new GameObject(GameObject.root(), building4Shape, building4Tex);
-		newObj.setLocalScale((new Matrix4f()).scale(3.0f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(-5.0f, 0.0f, 15.0f));
-		stationary.add(newObj);
+		// newObj = new GameObject(GameObject.root(), building4Shape, building4Tex);
+		// newObj.setLocalScale((new Matrix4f()).scale(3.0f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(-5.0f, 0.0f, 15.0f));
+		// stationary.add(newObj);
 
 		// Add objects that have potential to be dynamic (physics)
 		// newObj = new GameObject(GameObject.root(), trafficB3Shape, trafficTex);
@@ -946,6 +946,7 @@ public class MyGame extends VariableFrameRateGame {
 		targets.add(new Vector2f(-874.5f, 188.5f));
 		targets.add(new Vector2f(-926.5f, 215.5f));
 		targets.add(new Vector2f(-936f, 260f));
+		targets.add(new Vector2f(-936f, 420f));
 		targets.add(new Vector2f(-938f, 532f));
 		targets.add(new Vector2f(-925f, 583f));
 		targets.add(new Vector2f(-880.5f, 595.5f));
@@ -980,6 +981,8 @@ public class MyGame extends VariableFrameRateGame {
 		targets.add(new Vector2f(924.5f, -475f));
 		targets.add(new Vector2f(841.5f, -482.5f));
 		targets.add(new Vector2f(609.5f, -479.5f));
+		targets.add(new Vector2f(429.5f, -479.5f));
+		targets.add(new Vector2f(239.5f, -479.5f));
 		targets.add(new Vector2f(170f, -479.5f));
 		targets.add(new Vector2f(-79f, -479.5f));
 		targets.add(new Vector2f(-186f, -455f));
@@ -1368,6 +1371,7 @@ public class MyGame extends VariableFrameRateGame {
 		}
 	}
 
+	@Override
 	public void mouseWheelMoved(MouseWheelEvent e)
 	{
 		orbitController.mouseZoom(-e.getWheelRotation());
