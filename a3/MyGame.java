@@ -129,10 +129,10 @@ public class MyGame extends VariableFrameRateGame {
 	private float vals[] = new float[16];
 	private boolean isFalling = false, updateScriptInRuntime, newTarget = true;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
-	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
+	private double gravity, speed = 0, turnConst, turnCoef, turnMax;
 	private double startTime, prevTime, elapsedTime, amt, volume = 1, totalTime;
 	private float elapsed, targetMargin = 25, waypointHeight = 7f;
-	private int maxVolBG = 40, maxVolEng = 80, arid, maxSpeed, passes = 0, target = 0, position = 0;
+	private int maxVolBG, maxVolEng, arid, maxSpeed, engineForce, brakeForce, passes = 0, target = 0, position = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
 	private PhysicsObject avatarP, trafficConeP, terrainP, frontRWP, frontLWP, backRWP, backLWP, npcP, building2P;
@@ -591,7 +591,7 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void initializeLights()
 	{
-		Light.setGlobalAmbient(.5f, .5f, .5f);
+		// Light.setGlobalAmbient(.5f, .5f, .5f);
 
 		light = new Light();
 		light.setLocation(new Vector3f(0f, 5f, 0f));
@@ -626,8 +626,8 @@ public class MyGame extends VariableFrameRateGame {
 		physicsEngine.setGravity(gravity);
 
 		// Used to see boxShape
-		(engine.getSceneGraph()).setPhysicsDebugEnabled(true);
-		engine.getRenderSystem().setDynamicsWorld(physicsEngine.getDynamicsWorld());
+		// (engine.getSceneGraph()).setPhysicsDebugEnabled(true);
+		// engine.getRenderSystem().setDynamicsWorld(physicsEngine.getDynamicsWorld());
 
 		// --- create physics world ---
 
@@ -745,10 +745,10 @@ public class MyGame extends VariableFrameRateGame {
 
 		// ----------------- INPUTS SECTION -----------------------------
 		im = engine.getInputManager();
-		AccelAction accelAction = new AccelAction(this, vehicle, protocolClient);
-		DecelAction decelAction = new DecelAction(this, vehicle, protocolClient);
-		TurnRightAction turnRightAction = new TurnRightAction(this, (float) turnConst, (float) turnCoef, vehicle);
-		TurnLeftAction turnLeftAction = new TurnLeftAction(this, (float) turnConst, (float) turnCoef, vehicle);
+		AccelAction accelAction = new AccelAction(vehicle, engineForce, maxSpeed);
+		DecelAction decelAction = new DecelAction(vehicle, brakeForce);
+		TurnRightAction turnRightAction = new TurnRightAction((float) turnConst, (float) turnCoef, (float) turnMax, vehicle);
+		TurnLeftAction turnLeftAction = new TurnLeftAction((float) turnConst, (float) turnCoef, (float) turnMax, vehicle);
 		ToggleCameraType toggleCameraType = new ToggleCameraType(this);
 		IncreaseVolume increaseVolume = new IncreaseVolume();
 		DecreaseVolume decreaseVolume = new DecreaseVolume();
@@ -1113,14 +1113,14 @@ public class MyGame extends VariableFrameRateGame {
 
 		if (npc.wantsAccel)
 		{
-			v.applyEngineForce(4000, 2);
-			v.applyEngineForce(4000, 3);
+			v.applyEngineForce(engineForce, 2);
+			v.applyEngineForce(engineForce, 3);
 			v.setBrake(0, 2);
 			v.setBrake(0, 3);
 		} else if (npc.wantsDecel)
 		{
-			v.setBrake(100, 2);
-			v.setBrake(100, 3);
+			v.setBrake(brakeForce, 2);
+			v.setBrake(brakeForce, 3);
 		} else
 		{
 			v.applyEngineForce(0, 2);
@@ -1131,31 +1131,39 @@ public class MyGame extends VariableFrameRateGame {
 
 		if ((npc.wantsTurnLeft || npc.wantsTurnRight) && v.getCurrentSpeedKmHour() < 5)
 		{
-			v.applyEngineForce(600, 2);
-			v.applyEngineForce(600, 3);
+			v.applyEngineForce(engineForce * 0.15f, 2);
+			v.applyEngineForce(engineForce * 0.15f, 3);
 			v.setBrake(0, 2);
 			v.setBrake(0, 3);
 		}
 
+		float f = v.getSteeringValue(0);
+		float b;
 		if (npc.wantsTurnLeft)
 		{
-			v.setSteeringValue(0.5f, 0);
-			v.setSteeringValue(0.5f, 1);
-			v.setSteeringValue(-0.25f, 2);
-			v.setSteeringValue(-0.25f, 3);
+			f += turnConst + (turnCoef * time);
+			if (f > turnMax)
+			{
+				f = (float) turnMax;
+			}
 		} else if (npc.wantsTurnRight)
 		{
-			v.setSteeringValue(-0.5f, 0);
-			v.setSteeringValue(-0.5f, 1);
-			v.setSteeringValue(0.25f, 2);
-			v.setSteeringValue(0.25f, 3);
+			f -= turnConst + (turnCoef * time);
+			if (f < -turnMax)
+			{
+				f = (float) -turnMax;
+			}
 		} else
 		{
-			v.setSteeringValue(0, 0);
-			v.setSteeringValue(0, 1);
-			v.setSteeringValue(0, 2);
-			v.setSteeringValue(0, 3);
+			f = 0;
 		}
+		
+		b = f * -0.5f;
+
+		v.setSteeringValue(f, 0);
+		v.setSteeringValue(f, 1);
+		v.setSteeringValue(b, 2);
+		v.setSteeringValue(b, 3);
 
 		protocolClient.sendNpcMoveMessage(npc.getWorldLocation(), getLookAt(npc), 1);
 	}
@@ -1439,12 +1447,12 @@ public class MyGame extends VariableFrameRateGame {
 		Log.trace("Updating script\n");
 		runScript(scriptFile);
 		maxSpeed = (Integer) jsEngine.get("maxSpeed");
-		acceleration = (Double) jsEngine.get("acceleration");
-		stoppingForce = (Double) jsEngine.get("stoppingForce");
+		engineForce = (Integer) jsEngine.get("engineForce");
+		brakeForce = (Integer) jsEngine.get("brakeForce");
 		gravity = (Double) jsEngine.get("gravity");
-		deceleration = (Double) jsEngine.get("deceleration");
 		turnConst = (Double) jsEngine.get("turnConst");
 		turnCoef = (Double) jsEngine.get("turnCoef");
+		turnMax = (Double) jsEngine.get("turnMax");
 		maxVolBG = (Integer) jsEngine.get("bgSound");
 		maxVolEng = (Integer) jsEngine.get("engSound");
 		seeAllWaypoints = (Boolean) jsEngine.get("seeAllWaypoints");
@@ -1455,20 +1463,6 @@ public class MyGame extends VariableFrameRateGame {
 			{
 				Log.setLogLevel((Integer) jsEngine.get("logLevel"));
 			}
-		}
-
-
-		ds = ((Double) jsEngine.get("ds")).floatValue();
-		dx = ((Double) jsEngine.get("dx")).floatValue();
-		dy = ((Double) jsEngine.get("dy")).floatValue();
-		dz = ((Double) jsEngine.get("dz")).floatValue();
-		dr = ((Double) jsEngine.get("dr")).floatValue();
-
-		if (dob != null)
-		{
-			dob.setLocalScale((new Matrix4f()).scale(ds));
-			dob.setLocalTranslation((new Matrix4f()).translate(dx, dy, dz));
-			dob.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(dr)));
 		}
 	}
 
