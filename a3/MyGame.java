@@ -128,13 +128,13 @@ public class MyGame extends VariableFrameRateGame {
 	private ArrayList<GameObject> allWaypoints;
 
 	private boolean isClientConnected = false, isNpcHandler = false, race = false, racePrep = false, raceDone = false,
-			disableMouse = false, seeAllWaypoints = true;
+			disableMouse = false, seeAllWaypoints = false;
 	private float vals[] = new float[16];
 	private boolean isFalling = false, updateScriptInRuntime, newTarget = true;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime, amt, volume = 1, totalTime;
-	private float elapsed, targetMargin = 2, waypointHeight = 2.5f;
+	private float elapsed, targetMargin = 25, waypointHeight = 7f;
 	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0, target = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
@@ -462,7 +462,7 @@ public class MyGame extends VariableFrameRateGame {
 		// newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(90)));
 		stationary.add(newObj);
 		
-		dob = new GameObject(GameObject.root(), building2Shape, building2Tex);
+		// dob = new GameObject(GameObject.root(), building2Shape, building2Tex);
 
 		newObj = new GameObject(GameObject.root(), multipleBuildings3, building3Tex);
 
@@ -515,7 +515,7 @@ public class MyGame extends VariableFrameRateGame {
 		// dynamic.add(newObj);
 
 		waypoint = new GameObject(GameObject.root(), arrowShape, arrowTex);
-		waypoint.setLocalScale((new Matrix4f()).scale(2.0f));
+		waypoint.setLocalScale((new Matrix4f()).scale(7.0f));
 
 		if (seeAllWaypoints)
 		{
@@ -523,7 +523,7 @@ public class MyGame extends VariableFrameRateGame {
 			for (int i = 0; i < targets.size(); i++)
 			{
 				GameObject newWaypoint = new GameObject(GameObject.root(), arrowShape, arrowTex);
-				newWaypoint.setLocalScale((new Matrix4f()).scale(2.0f));
+				newWaypoint.setLocalScale((new Matrix4f()).scale(4.0f));
 				newWaypoint.getRenderStates().setWireframe(true);
 				newWaypoint.setLocalTranslation(
 						(new Matrix4f()).translate(targets.get(i).x, waypointHeight, targets.get(i).y));
@@ -1363,6 +1363,7 @@ public class MyGame extends VariableFrameRateGame {
 		turnCoef = (Double) jsEngine.get("turnCoef");
 		maxVolBG = (Integer) jsEngine.get("bgSound");
 		maxVolEng = (Integer) jsEngine.get("engSound");
+		seeAllWaypoints = (Boolean) jsEngine.get("seeAllWaypoints");
 		updateScriptInRuntime = (Boolean) jsEngine.get("updateDuringRuntime");
 		if (updateScriptInRuntime)
 		{
