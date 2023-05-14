@@ -4,6 +4,7 @@ import com.bulletphysics.dynamics.vehicle.RaycastVehicle;
 import com.bulletphysics.dynamics.vehicle.VehicleTuning;
 import com.bulletphysics.dynamics.DiscreteDynamicsWorld;
 import com.bulletphysics.dynamics.DynamicsWorld;
+import com.bulletphysics.linearmath.Transform;
 
 public interface PhysicsEngine {
 
@@ -60,6 +61,9 @@ public interface PhysicsEngine {
 	 */
 	public PhysicsObject addBoxObject(int uid, float mass, double[] transform,
 			float[] size);
+
+	public PhysicsObject addBoxObject(int uid, float mass, double[] transform,
+	float[] size, Transform transf);
 
 	public PhysicsObject addSphereObject(int uid, float mass,
 			double[] transform, float radius);

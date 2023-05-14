@@ -44,7 +44,8 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
         this.isDynamic = (mass != 0f);
         this.shape = shape;
         this.isVehicle = false;
-
+      
+        System.out.println("Transform Origin: " + this.transform.origin);
         localInertia = new Vector3f(0, 0, 0);
         if (isDynamic) {
             shape.calculateLocalInertia(mass, localInertia);
@@ -61,6 +62,39 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
 	JBulletPhysicsObject.lookUpObject.put(body,this);
     }
 
+    public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape shape, Transform transform)
+    {
+        this.uid = uid;
+        this.mass = mass;
+        this.transform = new Transform();
+        this.transform.setFromOpenGLMatrix(JBulletUtils.double_to_float_array(xform));
+        this.isDynamic = (mass != 0f);
+        this.shape = shape;
+        this.isVehicle = false;
+      
+        this.transform.set(transform);
+        System.out.println("Transform Origin: " + this.transform.origin);
+        localInertia = new Vector3f(0, 0, 0);
+        if (isDynamic) {
+            shape.calculateLocalInertia(mass, localInertia);
+        }
+        // using motionstate is recommended, it provides interpolation capabilities, and only synchronizes 'active' objects
+        myMotionState = new DefaultMotionState(this.transform);
+        rbInfo = new RigidBodyConstructionInfo(mass, myMotionState, shape, localInertia);
+        body = new RigidBody(rbInfo);
+        
+        //TODO set reasonable defaults
+        body.setSleepingThresholds(0.05f, 0.05f); //fix for objects stopping too soon
+        body.setDamping(0.1f, 0.1f);
+
+        Transform test = new Transform();
+        // body.setWorldTransform(transform);
+        body.getWorldTransform(test);
+        System.out.println("Test: "+test.origin);
+
+	JBulletPhysicsObject.lookUpObject.put(body,this);
+    }
+
     public JBulletPhysicsObject(int uid, float mass, double[] xform, CollisionShape chassis, boolean isVehicle)
     {
         this.uid = uid;
@@ -69,15 +103,29 @@ public abstract class JBulletPhysicsObject implements PhysicsObject {
         this.transform.setFromOpenGLMatrix(JBulletUtils.double_to_float_array(xform));
         this.isDynamic = (mass != 0f);
         this.scale = new javax.vecmath.Vector3f(0.5f, 0.5f, 0.5f);
+        this.isVehicle = isVehicle;
 
+
+        // this.transform.origin.set(0,0,0);
+
+        // Vector3f translationVector = new Vector3f(0, 2f, 0);
+
+        // Transform translation = new Transform();
+        // translation.setIdentity();
+        // translation.origin.set(translationVector);
+
+        // this.transform.mul(translation);
+  
         CompoundShape compound = new CompoundShape();
 
         Transform localTransform = new Transform();
+
         localTransform.setIdentity();
-        localTransform.origin.set(0, 1, 0);
+        localTransform.origin.set(0,1,0);
 
         // add compund object to dynamicsWorld
         // compound.setLocalScaling(scale);
+
         chassis.setLocalScaling(scale);
         compound.addChildShape(localTransform, chassis);
 
