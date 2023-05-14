@@ -109,7 +109,7 @@ public class MyGame extends VariableFrameRateGame {
 	private ObjShape ghostShape, dolphinShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S,
 			trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape,
 			building1Shape, building2Shape, building3Shape, building4Shape, trafficB3Shape, trafficB2Shape,
-			trafficB1Shape, arrowShape;
+			trafficB1Shape, arrowShape, multipleBuildings, multipleBuildings3, multipleBuildings4;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private Robot robot;
@@ -125,14 +125,16 @@ public class MyGame extends VariableFrameRateGame {
 	private RaycastVehicle vehicle, npcVehicle;
 	private ArrayList<Vector2f> targets;
 	private Vector2f targetPos;
+	private ArrayList<GameObject> allWaypoints;
 
-	private boolean isClientConnected = false, isNpcHandler = false, race = false, racePrep = false, raceDone = false;
+	private boolean isClientConnected = false, isNpcHandler = false, race = false, racePrep = false, raceDone = false,
+			disableMouse = false, seeAllWaypoints = true;
 	private float vals[] = new float[16];
 	private boolean isFalling = false, updateScriptInRuntime, newTarget = true;
 	private double centerX, centerY, prevMouseX, prevMouseY, curMouseX, curMouseY;
 	private double acceleration, deceleration, stoppingForce, gravity, speed = 0, gravitySpeed = 0, turnConst, turnCoef;
 	private double startTime, prevTime, elapsedTime, amt, volume = 1, totalTime;
-	private float elapsed, targetMargin = 2;
+	private float elapsed, targetMargin = 2, waypointHeight = 2.5f;
 	private int maxVolBG = 40, maxVolEng = 80, lakeIslands, maxSpeed, passes = 0, target = 0;
 	private int serverPort, avatarPhysicsUID, npcPhysicsUID;
 	private PhysicsEngine physicsEngine;
@@ -142,6 +144,9 @@ public class MyGame extends VariableFrameRateGame {
 	private Boolean toggleAnimation = false;
 	private Boolean mouseIsRecentering = false;
 	private String textureSelection = "";
+
+	private float ds, dx, dy, dz, dr;
+	private GameObject dob;
 
 	public MyGame(String serverAddress, int serverPort, String protocol, int debug)
 	{
@@ -170,6 +175,8 @@ public class MyGame extends VariableFrameRateGame {
 		}
 
 		selectCar();
+
+		setupTargets();
 	}
 
 	public static void main(String[] args)
@@ -278,6 +285,9 @@ public class MyGame extends VariableFrameRateGame {
 		trafficB2Shape = new ImportedModel("TrafficBarricade2.obj");
 		trafficB1Shape = new ImportedModel("TrafficBarricade1.obj");
 		arrowShape = new ImportedModel("arrow.obj");
+		multipleBuildings = new ImportedModel("MultipleBuildings.obj");
+		multipleBuildings3 = new ImportedModel("MultipleBuildings3.obj");
+		// multipleBuildings4 = new ImportedModel("MultipleBuildings4.obj");
 	}
 
 	@Override
@@ -352,19 +362,116 @@ public class MyGame extends VariableFrameRateGame {
 
 		// Add object primarily meant to be stationary
 		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
-		newObj.setLocalScale((new Matrix4f()).scale(18f));
-		newObj.setLocalTranslation((new Matrix4f()).translate(-4.0f, 0.0f, 0.0f));
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-180.0f, 0.0f, 37.0f));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-428.0f, 0.0f, 6.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(-153.55)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-620.0f, 0.0f, 90.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(14)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-900.0f, 0.0f, 250.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(90)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-903.5f, 0.0f, 450.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(-90)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-780.0f, 0.0f, 563.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-285.5f, 0.0f, 559.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-589.0f, 0.0f, 631.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-12.0f, 0.0f, 425.5f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(385.0f, 0.0f, 390.5f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(-100)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building1Shape, building1Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(140f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(250.0f, 0.0f, 160.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(-45)));
 		stationary.add(newObj);
 
 		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
-		// newObj.setLocalScale((new Matrix4f()).scale(0.5f));
-		// newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, -1.0f));
+		newObj.setLocalScale((new Matrix4f()).scale(0.5f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(0.0f, 0.0f, 13.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
 		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.5f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-60.0f, 0.0f, 13.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.5f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-140.0f, 0.0f, -63.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(0)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.5f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-495.0f, 0.0f, 91.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(25)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), building2Shape, building2Tex);
+		newObj.setLocalScale((new Matrix4f()).scale(0.5f));
+		newObj.setLocalTranslation((new Matrix4f()).translate(-1001.0f, 0.0f, 225.0f));
+		newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(90)));
+		stationary.add(newObj);
+
+		newObj = new GameObject(GameObject.root(), multipleBuildings, building2Tex);
+		// newObj.setLocalScale((new Matrix4f()).scale(0.5f));
+		// newObj.setLocalTranslation((new Matrix4f()).translate(-1001.0f, 0.0f, 285.0f));
+		// newObj.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(90)));
+		stationary.add(newObj);
+		
+		dob = new GameObject(GameObject.root(), building2Shape, building2Tex);
+
+		newObj = new GameObject(GameObject.root(), multipleBuildings3, building3Tex);
 
 		newObj = new GameObject(GameObject.root(), building3Shape, building3Tex);
 		newObj.setLocalScale((new Matrix4f()).scale(0.06f));
 		newObj.setLocalTranslation((new Matrix4f()).translate(4.0f, 0.0f, 0.0f));
 		stationary.add(newObj);
+		
+		// newObj = new GameObject(GameObject.root(), multipleBuildings4, building4Tex);
 
 		newObj = new GameObject(GameObject.root(), building4Shape, building4Tex);
 		newObj.setLocalScale((new Matrix4f()).scale(3.0f));
@@ -408,8 +515,22 @@ public class MyGame extends VariableFrameRateGame {
 		// dynamic.add(newObj);
 
 		waypoint = new GameObject(GameObject.root(), arrowShape, arrowTex);
-		waypoint.setLocalScale((new Matrix4f()).scale(1.25f));
+		waypoint.setLocalScale((new Matrix4f()).scale(2.0f));
 
+		if (seeAllWaypoints)
+		{
+			allWaypoints = new ArrayList<>();
+			for (int i = 0; i < targets.size(); i++)
+			{
+				GameObject newWaypoint = new GameObject(GameObject.root(), arrowShape, arrowTex);
+				newWaypoint.setLocalScale((new Matrix4f()).scale(2.0f));
+				newWaypoint.getRenderStates().setWireframe(true);
+				newWaypoint.setLocalTranslation(
+						(new Matrix4f()).translate(targets.get(i).x, waypointHeight, targets.get(i).y));
+				// newWaypoint.getRenderStates().disableRendering();
+				allWaypoints.add(newWaypoint);
+			}
+		}
 
 		// backRW = new GameObject(avatar, backRWShape, boxCarTex);
 		// backLW = new GameObject(avatar, backLWShape, boxCarTex);
@@ -482,8 +603,6 @@ public class MyGame extends VariableFrameRateGame {
 		engine.getRenderSystem().setWindowDimensions(1900, 1000);
 		engine.getRenderSystem().setLocationRelativeTo(null);
 		mainCamera = (engine.getRenderSystem().getViewport("MAIN").getCamera());
-
-		setupTargets();
 
 		setupNetworking();
 
@@ -585,6 +704,7 @@ public class MyGame extends VariableFrameRateGame {
 		DecreaseVolume decreaseVolume = new DecreaseVolume();
 		ToggleAnimationType toggleAnimationType = new ToggleAnimationType(this);
 		PrepRaceAction prepRaceAction = new PrepRaceAction();
+		ToggleMouse toggleMouse = new ToggleMouse();
 
 		im.associateActionWithAllGamepads(Identifier.Button._1, accelAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllGamepads(Identifier.Axis.X, turnRightAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
@@ -596,6 +716,7 @@ public class MyGame extends VariableFrameRateGame {
 		im.associateActionWithAllKeyboards(Identifier.Key.A, turnLeftAction, INPUT_ACTION_TYPE.REPEAT_WHILE_DOWN);
 		im.associateActionWithAllKeyboards(Identifier.Key.O, increaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key.L, decreaseVolume, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
+		im.associateActionWithAllKeyboards(Identifier.Key.M, toggleMouse, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key._2, toggleCameraType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key._3, toggleAnimationType, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
 		im.associateActionWithAllKeyboards(Identifier.Key.R, prepRaceAction, INPUT_ACTION_TYPE.ON_PRESS_ONLY);
@@ -688,23 +809,9 @@ public class MyGame extends VariableFrameRateGame {
 		String hud = String.format("Speed: %.2f", speed);
 		String p = String.format("x: %6.2f   y: %6.2f,   z: %6.2f", pos.x, pos.y, pos.z);
 		engine.getHUDmanager().setHUD1(hud, new Vector3f(1, 1, 1), 15, 15);
-		engine.getHUDmanager().setHUD2(p, new Vector3f(1, 1, 1), 200, 15);
+		engine.getHUDmanager().setHUD2(p, new Vector3f(1, 1, 1), 550, 15);
 
-		if (newTarget)
-		{
-			if (target >= targets.size())
-			{
-				targetPos = new Vector2f(0, 0);
-				protocolClient.sendFinishedRaceMessage();
-				raceDone = true;
-			}
-			else
-			{
-				targetPos = targets.get(target);
-			}
-			waypoint.setLocalLocation(new Vector3f(targetPos.x, 2.0f, targetPos.y));
-			newTarget = false;
-		}
+		checkForNewTarget();
 
 		waypoint.worldYaw(0.03f);
 
@@ -763,9 +870,78 @@ public class MyGame extends VariableFrameRateGame {
 	{
 		targets = new ArrayList<>();
 		targets.add(new Vector2f(-53.5f, 2.5f));
-		targets.add(new Vector2f(-200.5f, 3.5f));
-		// targets.add(new Vector2f(-349f, 8.5f));
-		// targets.add(new Vector2f(-545f, 102f));
+		targets.add(new Vector2f(-200.5f, 3.0f));
+		targets.add(new Vector2f(-349f, 8.5f));
+		targets.add(new Vector2f(-545f, 102f));
+		targets.add(new Vector2f(-646f, 130.5f));
+		targets.add(new Vector2f(-874.5f, 188.5f));
+		targets.add(new Vector2f(-926.5f, 215.5f));
+		targets.add(new Vector2f(-936f, 260f));
+		targets.add(new Vector2f(-938f, 532f));
+		targets.add(new Vector2f(-925f, 583f));
+		targets.add(new Vector2f(-880.5f, 595.5f));
+		targets.add(new Vector2f(-636f, 601.5f));
+		targets.add(new Vector2f(-562f, 585f));
+		targets.add(new Vector2f(-549f, 517f));
+		targets.add(new Vector2f(-550f, 441f));
+		targets.add(new Vector2f(-522f, 403f));
+		targets.add(new Vector2f(-403.5f, 389f));
+		targets.add(new Vector2f(-347.5f, 414f));
+		targets.add(new Vector2f(-338.5f, 532f));
+		targets.add(new Vector2f(-298f, 589.5f));
+		targets.add(new Vector2f(-207f, 590.5f));
+		targets.add(new Vector2f(-157f, 570f));
+		targets.add(new Vector2f(-159f, 474f));
+		targets.add(new Vector2f(-143f, 416.5f));
+		targets.add(new Vector2f(-8.5f, 390.5f));
+		targets.add(new Vector2f(261.5f, 393f));
+		targets.add(new Vector2f(339f, 376.5f));
+		targets.add(new Vector2f(354.5f, 259.5f));
+		targets.add(new Vector2f(324.5f, 193.5f));
+		targets.add(new Vector2f(184f, 48f));
+		targets.add(new Vector2f(169f, 2f));
+		targets.add(new Vector2f(459.5f, -176f));
+		targets.add(new Vector2f(568.5f, -194.5f));
+		targets.add(new Vector2f(727.5f, -53.5f));
+		targets.add(new Vector2f(805.5f, -16f));
+		targets.add(new Vector2f(884f, -13.5f));
+		targets.add(new Vector2f(940.5f, -39.5f));
+		targets.add(new Vector2f(941.5f, -255f));
+		targets.add(new Vector2f(945.5f, -412.5f));
+		targets.add(new Vector2f(924.5f, -475f));
+		targets.add(new Vector2f(841.5f, -482.5f));
+		targets.add(new Vector2f(609.5f, -479.5f));
+		targets.add(new Vector2f(170f, -479.5f));
+		targets.add(new Vector2f(-79f, -479.5f));
+		targets.add(new Vector2f(-186f, -455f));
+		targets.add(new Vector2f(-279.5f, -407f));
+		targets.add(new Vector2f(-320.5f, -354.5f));
+		targets.add(new Vector2f(-324f, -264f));
+		targets.add(new Vector2f(-278.5f, -221.5f));
+		targets.add(new Vector2f(15.5f, -230.5f));
+		targets.add(new Vector2f(73.5f, -192.5f));
+		targets.add(new Vector2f(83.5f, -42f));
+		targets.add(new Vector2f(23f, 0.5f));
+		targets.add(new Vector2f(0f, 0f));
+		// targets.add(new Vector2f( f, f));
+	}
+
+	private void checkForNewTarget()
+	{
+		if (newTarget)
+		{
+			if (target >= targets.size())
+			{
+				targetPos = new Vector2f(0, 0);
+				protocolClient.sendFinishedRaceMessage();
+				raceDone = true;
+			} else
+			{
+				targetPos = targets.get(target);
+			}
+			waypoint.setLocalLocation(new Vector3f(targetPos.x, waypointHeight, targetPos.y));
+			newTarget = false;
+		}
 	}
 
 	// --------- Audio Section --------
@@ -824,18 +1000,20 @@ public class MyGame extends VariableFrameRateGame {
 
 	public int getBgVolume()
 	{
-		return (int) (maxVolBG * volume);
+		return (int) Math.floor(maxVolBG * volume);
 	}
 
 	public int getEngVolume()
 	{
-		return (int) (maxVolEng * volume);
+		return (int) Math.floor(maxVolEng * volume);
 	}
 
 	public void updateVolume()
 	{
 		npcManager.updateVolume();
 		ghostManager.updateVolume();
+		bgSound.setVolume(getBgVolume());
+		engineSound.setVolume(getEngVolume());
 	}
 
 	// --------- NPC Section --------
@@ -1042,6 +1220,23 @@ public class MyGame extends VariableFrameRateGame {
 		toggleCameraType = !toggleCameraType;
 	}
 
+	public void toggleMouse()
+	{
+		disableMouse = !disableMouse;
+
+		RenderSystem rs = engine.getRenderSystem();
+		if (disableMouse)
+		{
+			Cursor normalCursor = new Cursor(Cursor.DEFAULT_CURSOR);
+			rs.getGLCanvas().setCursor(normalCursor);
+		} else
+		{
+			BufferedImage blank = new BufferedImage(16, 16, BufferedImage.TYPE_INT_ARGB);
+			Cursor blankCursor = Toolkit.getDefaultToolkit().createCustomCursor(blank, new Point(0, 0), "blank cursor");
+			rs.getGLCanvas().setCursor(blankCursor);
+		}
+	}
+
 	/**
 	 * Initializes the mouse input as a camera controller.
 	 */
@@ -1077,27 +1272,30 @@ public class MyGame extends VariableFrameRateGame {
 	@Override
 	public void mouseMoved(MouseEvent e)
 	{
-		if (mouseIsRecentering && centerX == e.getXOnScreen() && centerY == e.getYOnScreen())
+		if (!disableMouse)
 		{
-			mouseIsRecentering = false;
-		} else
-		{
-			curMouseX = e.getXOnScreen();
-			curMouseY = e.getYOnScreen();
-			double mouseDeltaX = prevMouseX - curMouseX;
-			double mouseDeltaY = prevMouseY - curMouseY;
-
-			if (!toggleCameraType)
+			if (mouseIsRecentering && centerX == e.getXOnScreen() && centerY == e.getYOnScreen())
 			{
-				springController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+				mouseIsRecentering = false;
 			} else
 			{
-				orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
-			}
+				curMouseX = e.getXOnScreen();
+				curMouseY = e.getYOnScreen();
+				double mouseDeltaX = prevMouseX - curMouseX;
+				double mouseDeltaY = prevMouseY - curMouseY;
 
-			recenterMouse();
-			prevMouseX = centerX; // reset prev to center
-			prevMouseY = centerY;
+				if (!toggleCameraType)
+				{
+					springController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+				} else
+				{
+					orbitController.mouseMove((float) mouseDeltaX, (float) mouseDeltaY);
+				}
+
+				recenterMouse();
+				prevMouseX = centerX; // reset prev to center
+				prevMouseY = centerY;
+			}
 		}
 	}
 
@@ -1163,6 +1361,8 @@ public class MyGame extends VariableFrameRateGame {
 		deceleration = (Double) jsEngine.get("deceleration");
 		turnConst = (Double) jsEngine.get("turnConst");
 		turnCoef = (Double) jsEngine.get("turnCoef");
+		maxVolBG = (Integer) jsEngine.get("bgSound");
+		maxVolEng = (Integer) jsEngine.get("engSound");
 		updateScriptInRuntime = (Boolean) jsEngine.get("updateDuringRuntime");
 		if (updateScriptInRuntime)
 		{
@@ -1170,6 +1370,20 @@ public class MyGame extends VariableFrameRateGame {
 			{
 				Log.setLogLevel((Integer) jsEngine.get("logLevel"));
 			}
+		}
+
+
+		ds = ((Double) jsEngine.get("ds")).floatValue();
+		dx = ((Double) jsEngine.get("dx")).floatValue();
+		dy = ((Double) jsEngine.get("dy")).floatValue();
+		dz = ((Double) jsEngine.get("dz")).floatValue();
+		dr = ((Double) jsEngine.get("dr")).floatValue();
+
+		if (dob != null)
+		{
+			dob.setLocalScale((new Matrix4f()).scale(ds));
+			dob.setLocalTranslation((new Matrix4f()).translate(dx, dy, dz));
+			dob.setLocalRotation((new Matrix4f()).rotateY((float) Math.toRadians(dr)));
 		}
 	}
 
@@ -1419,6 +1633,14 @@ public class MyGame extends VariableFrameRateGame {
 		public void performAction(float time, Event evt)
 		{
 			prepareForRace();
+		}
+	}
+
+	private class ToggleMouse extends AbstractInputAction {
+		@Override
+		public void performAction(float time, Event evt)
+		{
+			toggleMouse();
 		}
 	}
 
