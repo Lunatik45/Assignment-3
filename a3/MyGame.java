@@ -60,6 +60,7 @@ import tage.SpringCameraController;
 import tage.TextureImage;
 import tage.VariableFrameRateGame;
 import tage.Viewport;
+import tage.Light.LightType;
 import tage.input.IInputManager.INPUT_ACTION_TYPE;
 import tage.input.InputManager;
 import tage.input.action.AbstractInputAction;
@@ -98,16 +99,16 @@ public class MyGame extends VariableFrameRateGame {
 	private File scriptFile;
 	private ArrayList<GameObject> stationary, dynamic;
 	private GameObject avatar, terrain, terrainQ1, terrainQ2, terrainQ3, terrainQ4, plane, myRoad, frontRW,
-			frontLW, backRW, backLW, waypoint, tcBarrier1, tcBarrier2, tcBarrier3, tcBarrier4;
+			frontLW, backRW, backLW, waypoint, tcBarrier1, tcBarrier2, tcBarrier3, tcBarrier4, carLight_L, carLight_R;
 	private AnimatedShape avatarAS;
 	private GhostManager ghostManager;
 	private IAudioManager audioMgr;
 	private InputManager im;
-	private Light light;
+	private Light light, car_L, car_R;
 	private ObjShape ghostShape, planeShape, terrainShape, terrainQ1S, terrainQ2S, terrainQ3S, terrainQ4S,
 			trafficConeShape, boxCarShape, myRoadShape, frontRWShape, frontLWShape, backRWShape, backLWShape,
 			building1Shape, building2Shape, building3Shape, building4Shape, trafficB3Shape, trafficB2Shape,
-			trafficB1Shape, arrowShape, multipleBuildings, multipleBuildings3, multipleBuildings4;
+			trafficB1Shape, arrowShape, multipleBuildings, multipleBuildings3, multipleBuildings4, carLightShape_L, carLightShape_R;
 	private ProtocolClient protocolClient;
 	private ProtocolType serverProtocol;
 	private Robot robot;
@@ -280,6 +281,8 @@ public class MyGame extends VariableFrameRateGame {
 		arrowShape = new ImportedModel("arrow.obj");
 		multipleBuildings = new ImportedModel("MultipleBuildings.obj");
 		multipleBuildings3 = new ImportedModel("MultipleBuildings3.obj");
+		carLightShape_L = new ImportedModel("leftCarLight.obj");
+		carLightShape_R = new ImportedModel("rightCarLight.obj");
 		// multipleBuildings4 = new ImportedModel("MultipleBuildings4.obj");
 	}
 
@@ -338,8 +341,13 @@ public class MyGame extends VariableFrameRateGame {
 		float heightOffGround = -avatarAS.getLowestVertexY();
 		avatar = new GameObject(GameObject.root(), avatarAS, avatarTex);
 		avatar.setLocalScale((new Matrix4f()).scale(.25f, .25f, .25f));
-		// avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
-		avatar.setLocalTranslation((new Matrix4f()).translate(-230.0f, heightOffGround, -480.0f));
+		avatar.setLocalTranslation((new Matrix4f()).translate(0.0f, heightOffGround, 0.0f));
+		// avatar.setLocalTranslation((new Matrix4f()).translate(-230.0f, heightOffGround, -480.0f));
+
+		carLight_L = new GameObject(avatar, carLightShape_L, avatarTex);
+		carLight_L.getRenderStates().disableRendering();
+		carLight_R = new GameObject(avatar, carLightShape_R, avatarTex);
+		carLight_R.getRenderStates().disableRendering();
 
 		// Template:
 		// newObj = new GameObject(GameObject.root(), shape, tex);
@@ -555,47 +563,50 @@ public class MyGame extends VariableFrameRateGame {
 		// terrain.setLocalScale((new Matrix4f()).scale(50, 5, 50));
 		// terrain.setHeightMap(terrainHeightMap);
 		// terrain.setLocalTranslation((new Matrix4f()).translation(0f, -2f, 0f));
-
-
-		// terrainQ1 = new GameObject(GameObject.root(), terrainQ1S, terrainTex);
-		// terrainQ1.setIsTerrain(true);
-		// terrainQ1.getRenderStates().setTiling(1);
-		// terrainQ1.setLocalScale((new Matrix4f()).scale(50, 4, 50));
-		// terrainQ1.setHeightMap(terrainHeightMap1);
-		// terrainQ1.setLocalTranslation((new Matrix4f()).translation(50f, 0f, 50f));
-
-		// terrainQ2 = new GameObject(GameObject.root(), terrainQ2S, terrainTex);
-		// terrainQ2.setIsTerrain(true);
-		// terrainQ2.getRenderStates().setTiling(1);
-		// terrainQ2.setLocalScale((new Matrix4f()).scale(50, 4, 50));
-		// terrainQ2.setHeightMap(terrainHeightMap2);
-		// terrainQ2.setLocalTranslation((new Matrix4f()).translation(-50f, 0f, 50f));
-		// terrainQ2.setLocalScale((new Matrix4f()).scale(1, 1, 1));
-
-
-		// terrainQ3 = new GameObject(GameObject.root(), terrainQ3S, terrainTex);
-		// terrainQ3.setIsTerrain(true);
-		// terrainQ3.getRenderStates().setTiling(1);
-		// terrainQ3.setLocalScale((new Matrix4f()).scale(50, 4, 50));
-		// terrainQ3.setHeightMap(terrainHeightMap3);
-		// terrainQ3.setLocalTranslation((new Matrix4f()).translation(0f, 0f, 0f));
-
-		// terrainQ4 = new GameObject(GameObject.root(), terrainQ4S, terrainTex);
-		// terrainQ4.setIsTerrain(true);
-		// terrainQ4.getRenderStates().setTiling(1);
-		// terrainQ4.setLocalScale((new Matrix4f()).scale(50, 4, 50));
-		// terrainQ4.setHeightMap(terrainHeightMap4);
-		// terrainQ4.setLocalTranslation((new Matrix4f()).translation(50f, 0f, 50f));
 	}
 
 	@Override
 	public void initializeLights()
 	{
-		Light.setGlobalAmbient(.5f, .5f, .5f);
+		// Light.setGlobalAmbient(.5f, .5f, .5f);
+		
+		// light = new Light();
+		// light.setLocation(new Vector3f(0f, 5f, 0f));
 
-		light = new Light();
-		light.setLocation(new Vector3f(0f, 5f, 0f));
-		engine.getSceneGraph().addLight(light);
+		car_L = new Light();
+		car_R = new Light();
+
+		// engine.getSceneGraph().addLight(light);
+		engine.getSceneGraph().addLight(car_L);
+		engine.getSceneGraph().addLight(car_R);	
+		
+		car_L.setAmbient(0.3f, 0.3f, 0.3f);
+		car_L.setDiffuse(0.8f, 0.8f, 0.8f);
+		car_L.setSpecular(1.0f, 1.0f, 1.0f);
+
+		car_R.setAmbient(0.3f, 0.3f, 0.3f);
+		car_R.setDiffuse(0.8f, 0.8f, 0.8f);
+		car_R.setSpecular(1.0f, 1.0f, 1.0f);
+
+		car_L.setType(Light.LightType.POSITIONAL);
+		car_R.setType(Light.LightType.POSITIONAL);
+		
+		car_L.setCutoffAngle(30.0f);
+		car_R.setCutoffAngle(30.0f);
+
+		car_L.setOffAxisExponent(2.0f);
+		car_R.setOffAxisExponent(2.0f);
+		
+		car_L.setDirection(new Vector3f(-1f, 0f, 0f));
+		car_R.setDirection(new Vector3f(-1f, 0f, 0f));
+
+		Vector3f left = carLight_L.getLocalLocation();
+		car_L.setLocation(left);
+		Vector3f right = carLight_R.getLocalLocation();
+		car_R.setLocation(right);
+
+		car_R.setRange(5.0f);
+		car_L.setRange(5.0f);
 	}
 
 	@Override
@@ -862,7 +873,22 @@ public class MyGame extends VariableFrameRateGame {
 			rotMatrix4f.rotation(aa);
 
 			go.setLocalRotation(rotMatrix4f);
+
+			if(po.isVehicle()) 
+			{
+				Vector3f updateLight_L = carLight_L.getWorldLocation();
+				Vector3f updateLight_R = carLight_R.getWorldLocation();
+				
+				car_L.setLocation(updateLight_L);
+				car_R.setLocation(updateLight_R);
+
+				car_L.setDirection(carLight_L.getLocalForwardVector());
+				car_R.setLocation(carLight_R.getLocalForwardVector());
+				
+			}
 		}
+
+
 
 		for (int i = 0; i < 4; i++)
 		{
